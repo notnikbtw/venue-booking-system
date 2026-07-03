@@ -1,8 +1,7 @@
+import { BookingController } from '@modules/booking/booking.controller';
+import { BookingService } from '@modules/booking/booking.service';
+import { Booking } from '@modules/booking/entities/booking.entity';
 import { Test, TestingModule } from '@nestjs/testing';
-
-import { BookingController } from './booking.controller';
-import { BookingService } from './booking.service';
-import { Booking } from './entities/booking.entity';
 
 describe('BookingController', () => {
   let controller: BookingController;
