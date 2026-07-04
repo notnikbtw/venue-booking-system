@@ -80,6 +80,7 @@ describe('BookingService', () => {
       const mockEstablishment = {
         id: 1,
         name: 'Establishment',
+        totalSeats: 10,
       } as Establishment;
       const mockCreatedBooking = {
         id: 1,
@@ -134,7 +135,7 @@ describe('BookingService', () => {
     });
   });
 
-  describe('getBookingById', () => {
+  describe('get booking by id', () => {
     it('should return a booking if it exists', async () => {
       const mockBooking = { id: 5, bookingTime: '20:00' } as Booking;
 
@@ -159,6 +160,95 @@ describe('BookingService', () => {
       expect(bookingRepository.findOne).toHaveBeenCalledWith({
         where: { id: 5 },
         relations: ['user', 'establishment'],
+      });
+    });
+  });
+
+  describe('get all bookings', () => {
+    it('should return all bookings', async () => {
+      const mockBookings = [
+        { id: 1, bookingTime: '20:00' },
+        { id: 2, bookingTime: '21:00' },
+        { id: 3, bookingTime: '22:00' },
+      ] as Booking[];
+
+      jest.spyOn(bookingRepository, 'find').mockResolvedValue(mockBookings);
+
+      const result = await service.getAllBookings();
+
+      expect(result).toEqual(mockBookings);
+      expect(bookingRepository.find).toHaveBeenCalledWith({
+        relations: ['user', 'establishment'],
+      });
+    });
+  });
+
+  describe('get user bookings', () => {
+    it('should return user bookings', async () => {
+      const mockBookings = [
+        { id: 1, bookingTime: '20:00' },
+        { id: 2, bookingTime: '21:00' },
+        { id: 3, bookingTime: '22:00' },
+      ] as Booking[];
+
+      jest.spyOn(bookingRepository, 'find').mockResolvedValue(mockBookings);
+
+      const result = await service.getUserBookings(1);
+
+      expect(result).toEqual(mockBookings);
+
+      expect(bookingRepository.find).toHaveBeenCalledWith({
+        where: { user: { id: 1 } },
+        relations: ['establishment'],
+        order: { bookingDate: 'DESC' },
+      });
+    });
+
+    it('should return empty array if user has no bookings', async () => {
+      jest.spyOn(bookingRepository, 'find').mockResolvedValue([]);
+
+      const result = await service.getUserBookings(1);
+
+      expect(result).toEqual([]);
+      expect(bookingRepository.find).toHaveBeenCalledWith({
+        where: { user: { id: 1 } },
+        relations: ['establishment'],
+        order: { bookingDate: 'DESC' },
+      });
+    });
+  });
+
+  describe('get establishment bookings', () => {
+    it('should return bookings for a specific establishment', async () => {
+      const mockBookings = [
+        { id: 1, bookingTime: '20:00' },
+        { id: 2, bookingTime: '21:00' },
+        { id: 3, bookingTime: '22:00' },
+      ] as Booking[];
+
+      jest.spyOn(bookingRepository, 'find').mockResolvedValue(mockBookings);
+
+      const result = await service.getEstablishmentBookings(1);
+
+      expect(result).toEqual(mockBookings);
+      expect(bookingRepository.find).toHaveBeenCalledWith({
+        where: { establishment: { id: 1 } },
+        relations: ['user'],
+        order: { bookingDate: 'DESC' },
+      });
+    });
+
+    it('should return empty array if establishment has no bookings', async () => {
+      jest.spyOn(bookingRepository, 'find').mockResolvedValue([]);
+
+      const result = await service.getEstablishmentBookings(1);
+
+      expect(result).toEqual([]);
+
+      expect(bookingRepository.find).toHaveBeenCalledWith({
+        where: { establishment: { id: 1 } },
+        relations: ['user'],
+        order: { bookingDate: 'DESC' },
       });
     });
   });
