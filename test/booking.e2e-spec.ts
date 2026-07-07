@@ -54,6 +54,23 @@ describe('Booking System', () => {
           return null;
         }),
 
+        find: jest.fn().mockResolvedValue([
+          {
+            id: 1,
+            bookingDate: '2026-01-01',
+            bookingTime: '18:00',
+            numberOfGuests: 2,
+            status: 'confirmed',
+          },
+          {
+            id: 2,
+            bookingDate: '2026-01-02',
+            bookingTime: '20:00',
+            numberOfGuests: 4,
+            status: 'confirmed',
+          },
+        ]),
+
         createQueryBuilder: jest.fn().mockReturnValue({
           select: jest.fn().mockReturnThis(),
           where: jest.fn().mockReturnThis(),
@@ -144,8 +161,75 @@ describe('Booking System', () => {
     });
   });
 
+  describe('GET /booking', () => {
+    it('should return all bookings', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/booking')
+        .set('Authorization', 'Bearer fake-jwt-token');
+
+      expect(response.statusCode).toBe(200);
+      expect(Array.isArray(response.body)).toBe(true);
+      expect(response.body.length).toBe(2);
+      expect(response.body[0]).toHaveProperty('id', 1);
+    });
+
+    it('should respond with 401 if user is not authorized', async () => {
+      const response = await request(app.getHttpServer()).get('/booking');
+
+      expect(response.statusCode).toBe(401);
+    });
+  });
+
+  describe('GET /my-bookings', () => {
+    it('should return user booking', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/booking/my-bookings')
+        .set('Authorization', 'Bearer fake-jwt-token');
+
+      expect(response.statusCode).toBe(200);
+      expect(Array.isArray(response.body)).toBe(true);
+
+      if (response.body.length > 0) {
+        const firstBooking = response.body[0];
+        expect(firstBooking).toHaveProperty('id');
+        expect(firstBooking).toHaveProperty('bookingDate');
+        expect(firstBooking).toHaveProperty('bookingTime');
+        expect(firstBooking).toHaveProperty('status');
+      }
+    });
+
+    it('should respond with 401 if user is not authorized', async () => {
+      const response = await request(app.getHttpServer()).get(
+        '/booking/my-bookings'
+      );
+
+      expect(response.statusCode).toBe(401);
+    });
+  });
+
+  describe('GET establishment/:establishmentId', () => {
+    it('should return establishment bookings', async () => {
+      const response = await request(app.getHttpServer()).get(
+        '/booking/establishment/1'
+      );
+
+      expect(response.statusCode).toBe(200);
+      expect(Array.isArray(response.body)).toBe(true);
+      expect(response.body.length).toBeGreaterThan(0);
+    });
+
+    it('should respond with 404 if establishment is not found', async () => {
+      const response = await request(app.getHttpServer()).get(
+        '/booking/establishment/9999'
+      );
+
+      expect(response.statusCode).toBe(404);
+      expect(response.body.message).toBe('Establishment 9999 not found');
+    });
+  });
+
   describe('GET /booking/:id', () => {
-    it('should respond with 201 on successful found by ID', async () => {
+    it('should respond with 200 on successful found by ID', async () => {
       const response = await request(app.getHttpServer())
         .get('/booking/1')
         .set('Authorization', 'Bearer fake-jwt-token');
