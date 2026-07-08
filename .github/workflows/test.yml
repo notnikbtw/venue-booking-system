@@ -31,3 +31,7 @@ jobs:
 
       - name: Run E2E Tests
         run: npm run test:e2e
+        env:
+          JWT_ACCESS_SECRET: "super_secret_key_for_ci_testing"
+          JWT_REFRESH_SECRET: "super_secret_refresh_key_for_ci"
+          NODE_ENV: test
