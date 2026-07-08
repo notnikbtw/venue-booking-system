@@ -1,10 +1,13 @@
 import { JwtAuthGuard } from '@common/guard/jwt-auth.guard';
 import { Booking } from '@modules/booking/entities/booking.entity';
+import { Establishment } from '@modules/establishment/entities/establishment.entity';
+import { User } from '@modules/users/entities/user.entity';
 import {
   INestApplication,
   UnauthorizedException,
   ValidationPipe,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import request from 'supertest';
@@ -35,6 +38,41 @@ describe('Booking System', () => {
           request.user = { id: 1 };
           return true;
         },
+      })
+      .overrideProvider(ConfigService)
+      .useValue({
+        get: jest.fn().mockImplementation((key: string) => {
+          if (key === 'database') {
+            return {
+              type: 'better-sqlite3',
+              database: ':memory:',
+              entities: [],
+              synchronize: true,
+            };
+          }
+          return 'some-value';
+        }),
+        getOrThrow: jest.fn().mockImplementation((key: string) => {
+          return 'some-value';
+        }),
+      })
+      .overrideProvider(getRepositoryToken(User))
+      .useValue({
+        findOne: jest.fn().mockImplementation(options => {
+          if (options.where && options.where.id === 1) {
+            return { id: 1, name: 'John Doe' };
+          }
+          return null;
+        }),
+      })
+      .overrideProvider(getRepositoryToken(Establishment))
+      .useValue({
+        findOne: jest.fn().mockImplementation(options => {
+          if (options.where && options.where.id === 1) {
+            return { id: 1, name: 'Restaurant', totalSeats: 50 };
+          }
+          return null;
+        }),
       })
       .overrideProvider(getRepositoryToken(Booking))
       .useValue({
