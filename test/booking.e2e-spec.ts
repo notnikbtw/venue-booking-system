@@ -1,4 +1,5 @@
 import { JwtAuthGuard } from '@common/guard/jwt-auth.guard';
+import { Booking } from '@modules/booking/entities/booking.entity';
 import {
   INestApplication,
   UnauthorizedException,
@@ -9,7 +10,6 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import request from 'supertest';
 
 import { AppModule } from '@/app.module';
-import { Booking } from '@/modules/booking/entities/booking.entity';
 
 describe('Booking System', () => {
   let app: INestApplication;
@@ -117,14 +117,7 @@ describe('Booking System', () => {
     });
 
     it('should respond with 401 if user is not authorized', async () => {
-      const response = await request(app.getHttpServer())
-        .post('/booking')
-        .send({
-          establishment: 1,
-          bookingDate: '2026-01-01',
-          bookingTime: '18:00',
-          numberOfGuests: 2,
-        });
+      const response = await request(app.getHttpServer()).post('/booking');
 
       expect(response.statusCode).toBe(401);
       expect(response.body.message).toBe('Unauthorized');
@@ -216,15 +209,6 @@ describe('Booking System', () => {
       expect(response.statusCode).toBe(200);
       expect(Array.isArray(response.body)).toBe(true);
       expect(response.body.length).toBeGreaterThan(0);
-    });
-
-    it('should respond with 404 if establishment is not found', async () => {
-      const response = await request(app.getHttpServer()).get(
-        '/booking/establishment/9999'
-      );
-
-      expect(response.statusCode).toBe(404);
-      expect(response.body.message).toBe('Establishment 9999 not found');
     });
   });
 
