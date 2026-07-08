@@ -23,7 +23,7 @@ import { SeederModule } from '@/database/seeders/seeder.module';
     ConfigModule.forRoot({
       load: [databaseConfig],
       isGlobal: true,
-      envFilePath: '.env',
+      envFilePath: process.env.NODE_ENV === 'test' ? '.env.test' : '.env',
       validationSchema,
       validationOptions: {
         abortEarly: true,
