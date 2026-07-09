@@ -87,19 +87,154 @@ describe('Establishment System', () => {
       .overrideProvider(getRepositoryToken(User))
       .useValue({
         findOneBy: jest.fn().mockResolvedValue({ id: 1, name: 'Owner User' }),
+        findOne: jest.fn().mockResolvedValue({
+          id: 1,
+          name: 'Owner User',
+          favorites: [1],
+        }),
+        createQueryBuilder: jest.fn().mockImplementation(() => {
+          const queryBuilderMock = {
+            select: jest.fn().mockReturnThis(),
+            where: jest.fn().mockReturnThis(),
+            getRawOne: jest.fn().mockResolvedValue({ sum: '0' }),
+          };
+          return queryBuilderMock;
+        }),
       })
 
       .overrideProvider(getRepositoryToken(Establishment))
       .useValue({
-        find: jest.fn().mockResolvedValue([]),
-        findOne: jest.fn().mockResolvedValue(null),
-        findOneBy: jest.fn().mockResolvedValue(null),
+        find: jest.fn().mockResolvedValue([
+          {
+            id: 1,
+            name: 'Restaurant',
+            address: 'New York, Street 123',
+            locationDetails: {
+              city: 'New York',
+              street: 'Street',
+              building: '123',
+              zipCode: '00501',
+            },
+            lat: 45.123,
+            lng: 14.456,
+            description: 'Calm and comfortable establishment',
+            totalSeats: '50',
+            rating: 4.5,
+            coverPhoto: 'https://placehold.co/600x400',
+            photos: [
+              'https://placehold.co/600x400',
+              'https://placehold.co/600x400',
+            ],
+            type: { id: 1, name: 'Restaurant' },
+            owner: { id: 1, name: 'Owner User' },
+          },
+        ]),
+        findOne: jest.fn().mockImplementation(options => {
+          if (options.where.id === 1) {
+            return {
+              id: 1,
+              name: 'Restaurant',
+              address: 'New York, Street 123',
+              locationDetails: {
+                city: 'New York',
+                street: 'Street',
+                building: '123',
+                zipCode: '00501',
+              },
+              lat: 45.123,
+              lng: 14.456,
+              description: 'Calm and comfortable establishment',
+              totalSeats: '50',
+              rating: 4.5,
+              coverPhoto: 'https://placehold.co/600x400',
+              photos: [
+                'https://placehold.co/600x400',
+                'https://placehold.co/600x400',
+              ],
+              type: { id: 1, name: 'Restaurant' },
+              owner: { id: 1, name: 'Owner User' },
+            };
+          }
+        }),
+        findOneBy: jest.fn().mockResolvedValue({
+          id: 1,
+          name: 'Restaurant',
+          address: 'New York, Street 123',
+          locationDetails: {
+            city: 'New York',
+            street: 'Street',
+            building: '123',
+            zipCode: '00501',
+          },
+          lat: 45.123,
+          lng: 14.456,
+          description: 'Calm and comfortable establishment',
+          totalSeats: '50',
+          rating: 4.5,
+          coverPhoto: 'https://placehold.co/600x400',
+          photos: [
+            'https://placehold.co/600x400',
+            'https://placehold.co/600x400',
+          ],
+          type: { id: 1, name: 'Restaurant' },
+          owner: { id: 1, name: 'Owner User' },
+        }),
 
-        createQueryBuilder: jest.fn().mockReturnValue({
-          select: jest.fn().mockReturnThis(),
-          where: jest.fn().mockReturnThis(),
-          andWhere: jest.fn().mockReturnThis(),
-          getRawOne: jest.fn().mockResolvedValue({ sum: '0' }),
+        createQueryBuilder: jest.fn().mockImplementation(() => {
+          const queryBuilderMock = {
+            select: jest.fn().mockReturnThis(),
+            addSelect: jest.fn().mockReturnThis(),
+            where: jest.fn().mockReturnThis(),
+            andWhere: jest.fn().mockReturnThis(),
+            leftJoin: jest.fn().mockReturnThis(),
+            leftJoinAndSelect: jest.fn().mockReturnThis(),
+            setParameter: jest.fn().mockReturnThis(),
+            groupBy: jest.fn().mockReturnThis(),
+            addGroupBy: jest.fn().mockReturnThis(),
+            andHaving: jest.fn().mockReturnThis(),
+            orderBy: jest.fn().mockReturnThis(),
+            addOrderBy: jest.fn().mockReturnThis(),
+            offset: jest.fn().mockReturnThis(),
+            limit: jest.fn().mockReturnThis(),
+            clone: jest.fn().mockImplementation(() => queryBuilderMock),
+            getRawAndEntities: jest.fn().mockResolvedValue({
+              entities: [
+                {
+                  id: 1,
+                  name: 'Restaurant',
+                  address: 'New York, Street 123',
+                  locationDetails: {
+                    city: 'New York',
+                    street: 'Street',
+                    building: '123',
+                    zipCode: '00501',
+                  },
+                  lat: 45.123,
+                  lng: 14.456,
+                  description: 'Calm and comfortable establishment',
+                  totalSeats: '50',
+                  rating: 4.5,
+                  coverPhoto: 'https://placehold.co/600x400',
+                  photos: [
+                    'https://placehold.co/600x400',
+                    'https://placehold.co/600x400',
+                  ],
+                  type: { id: 1, name: 'Restaurant' },
+                  owner: { id: 1, name: 'Owner User' },
+                },
+              ],
+              raw: [
+                {
+                  commentsCount: '5',
+                  avgRating: '4.5',
+                  weightedRating: '4.5',
+                },
+              ],
+            }),
+            getCount: jest.fn().mockResolvedValue(1),
+            getRawOne: jest.fn().mockResolvedValue({ sum: '0' }),
+          };
+          return queryBuilderMock;
         }),
 
         create: jest.fn().mockImplementation(dto => dto),
@@ -172,6 +307,66 @@ describe('Establishment System', () => {
         '/establishment'
       );
 
+      expect(response.statusCode).toBe(401);
+      expect(response.body.message).toBe('Unauthorized');
+    });
+  });
+
+  describe('GET /establishment', () => {
+    it('should return all establishments', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/establishment')
+        .query({
+          page: 1,
+          take: 10,
+          search: '',
+        });
+      expect(response.statusCode).toBe(200);
+      expect(Array.isArray(response.body.data)).toBe(true);
+      const establishment = response.body.data[0];
+      expect(establishment.id).toBe(1);
+      expect(establishment.name).toBe('Restaurant');
+      expect(establishment.commentsCount).toBe(5);
+      expect(establishment.avgRating).toBe(4.5);
+      expect(establishment.weightedRating).toBe(4.5);
+      expect(establishment.isFavorite).toBe(false);
+    });
+  });
+
+  describe('GET /establishment/:id', () => {
+    it('should return all establishments', async () => {
+      const response = await request(app.getHttpServer()).get(
+        '/establishment/1'
+      );
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body.id).toBe(1);
+      expect(response.body.name).toBe('Restaurant');
+    });
+
+    it('should return 404 if establishment not found', async () => {
+      const response = await request(app.getHttpServer()).get(
+        '/establishment/999'
+      );
+
+      expect(response.statusCode).toBe(404);
+    });
+  });
+
+  describe('GET /establishment/favorites', () => {
+    it('should return all favorites for current user', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/establishment/favorites')
+        .set('Authorization', 'Bearer fake-jwt-token');
+
+      console.log(response.body);
+      expect(response.statusCode).toBe(200);
+    });
+
+    it('should return 401 if user is not authorized', async () => {
+      const response = await request(app.getHttpServer()).get(
+        '/establishment/favorites'
+      );
       expect(response.statusCode).toBe(401);
       expect(response.body.message).toBe('Unauthorized');
     });
