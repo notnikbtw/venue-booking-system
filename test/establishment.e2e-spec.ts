@@ -1,6 +1,11 @@
 import { JwtAuthGuard } from '@common/guard/jwt-auth.guard';
 import { RolesGuard } from '@common/guard/jwt-roles.guard';
+import { FileUploadService } from '@common/services/file-upload.service';
+import { GeocodingService } from '@common/services/geocoding.service';
 import { Establishment } from '@modules/establishment/entities/establishment.entity';
+import { EstablishmentType } from '@modules/establishment-type/entities/establishment-type.entity';
+import { Feature } from '@modules/features/entities/feature.entity';
+import { User } from '@modules/users/entities/user.entity';
 import {
   INestApplication,
   UnauthorizedException,
@@ -12,11 +17,6 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import request from 'supertest';
 
 import { AppModule } from '@/app.module';
-import { FileUploadService } from '@/common/services/file-upload.service';
-import { GeocodingService } from '@/common/services/geocoding.service';
-import { EstablishmentType } from '@/modules/establishment-type/entities/establishment-type.entity';
-import { Feature } from '@/modules/features/entities/feature.entity';
-import { User } from '@/modules/users/entities/user.entity';
 
 describe('Establishment System', () => {
   let app: INestApplication;
@@ -118,7 +118,7 @@ describe('Establishment System', () => {
             lat: 45.123,
             lng: 14.456,
             description: 'Calm and comfortable establishment',
-            totalSeats: '50',
+            totalSeats: 50,
             rating: 4.5,
             coverPhoto: 'https://placehold.co/600x400',
             photos: [
@@ -126,12 +126,13 @@ describe('Establishment System', () => {
               'https://placehold.co/600x400',
             ],
             type: { id: 1, name: 'Restaurant' },
+            ownerId: 1,
             owner: { id: 1, name: 'Owner User' },
           },
         ]),
         findOne: jest.fn().mockImplementation(options => {
           if (options.where.id === 1) {
-            return {
+            return Promise.resolve({
               id: 1,
               name: 'Restaurant',
               address: 'New York, Street 123',
@@ -144,7 +145,7 @@ describe('Establishment System', () => {
               lat: 45.123,
               lng: 14.456,
               description: 'Calm and comfortable establishment',
-              totalSeats: '50',
+              totalSeats: 50,
               rating: 4.5,
               coverPhoto: 'https://placehold.co/600x400',
               photos: [
@@ -152,8 +153,24 @@ describe('Establishment System', () => {
                 'https://placehold.co/600x400',
               ],
               type: { id: 1, name: 'Restaurant' },
+              ownerId: 1,
               owner: { id: 1, name: 'Owner User' },
-            };
+              comments: [
+                {
+                  id: 10,
+                  text: 'Great experience!',
+                  createdAt: '2026-07-20T10:00:00.000Z',
+                  user: { id: 5, name: 'User' },
+                },
+              ],
+            });
+          }
+          if (options.where.id === 2) {
+            return Promise.resolve({
+              id: 2,
+              ownerId: 2,
+              owner: { id: 2 },
+            });
           }
         }),
         findOneBy: jest.fn().mockResolvedValue({
@@ -169,7 +186,7 @@ describe('Establishment System', () => {
           lat: 45.123,
           lng: 14.456,
           description: 'Calm and comfortable establishment',
-          totalSeats: '50',
+          totalSeats: 50,
           rating: 4.5,
           coverPhoto: 'https://placehold.co/600x400',
           photos: [
@@ -177,6 +194,7 @@ describe('Establishment System', () => {
             'https://placehold.co/600x400',
           ],
           type: { id: 1, name: 'Restaurant' },
+          ownerId: 1,
           owner: { id: 1, name: 'Owner User' },
         }),
 
@@ -212,7 +230,7 @@ describe('Establishment System', () => {
                   lat: 45.123,
                   lng: 14.456,
                   description: 'Calm and comfortable establishment',
-                  totalSeats: '50',
+                  totalSeats: 50,
                   rating: 4.5,
                   coverPhoto: 'https://placehold.co/600x400',
                   photos: [
@@ -239,12 +257,17 @@ describe('Establishment System', () => {
 
         create: jest.fn().mockImplementation(dto => dto),
 
-        save: jest.fn().mockImplementation(dto => {
-          return {
+        merge: jest.fn().mockImplementation((entity, dto) => {
+          Object.assign(entity, dto);
+          return entity;
+        }),
+
+        save: jest.fn().mockImplementation(dto =>
+          Promise.resolve({
             id: 1,
             ...dto,
-          };
-        }),
+          })
+        ),
       })
       .compile();
 
@@ -302,7 +325,7 @@ describe('Establishment System', () => {
       expect(response.body).toHaveProperty('message');
       expect(Array.isArray(response.body.message)).toBe(true);
     });
-    it('should return 401 if if user is not authorized', async () => {
+    it('should return 401 if user is not authorized', async () => {
       const response = await request(app.getHttpServer()).post(
         '/establishment'
       );
@@ -353,13 +376,34 @@ describe('Establishment System', () => {
     });
   });
 
+  describe('GET /me', () => {
+    it('should return current owner establishments', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/establishment/me')
+        .set('Authorization', 'Bearer fake-jwt-token');
+
+      expect(response.statusCode).toBe(200);
+      expect(Array.isArray(response.body)).toBe(true);
+      const establishment = response.body[0];
+      expect(establishment.id).toBe(1);
+      expect(establishment.owner.id).toBe(1);
+    });
+
+    it('should return 401 if user is not authorized', async () => {
+      const response = await request(app.getHttpServer()).get(
+        '/establishment/me'
+      );
+
+      expect(response.statusCode).toBe(401);
+    });
+  });
+
   describe('GET /establishment/favorites', () => {
     it('should return all favorites for current user', async () => {
       const response = await request(app.getHttpServer())
         .get('/establishment/favorites')
         .set('Authorization', 'Bearer fake-jwt-token');
 
-      console.log(response.body);
       expect(response.statusCode).toBe(200);
     });
 
@@ -369,6 +413,95 @@ describe('Establishment System', () => {
       );
       expect(response.statusCode).toBe(401);
       expect(response.body.message).toBe('Unauthorized');
+    });
+  });
+
+  describe('GET /establishment/:id/comments', () => {
+    it('should return all comments from establishment', async () => {
+      const response = await request(app.getHttpServer()).get(
+        '/establishment/1/comments'
+      );
+
+      expect(response.statusCode).toBe(200);
+      expect(Array.isArray(response.body)).toBe(true);
+      expect(response.body[0].text).toBe('Great experience!');
+    });
+
+    it('should return 404 if establishment not found', async () => {
+      const response = await request(app.getHttpServer()).get(
+        '/establishment/999/comments'
+      );
+
+      expect(response.statusCode).toBe(404);
+    });
+
+    it('should handle invalid string id properly', async () => {
+      const response = await request(app.getHttpServer()).get(
+        '/establishment/asdfsdf/comments'
+      );
+
+      expect([400, 404]).toContain(response.statusCode);
+    });
+  });
+
+  describe('PATCH /establishment/:id', () => {
+    it('should retutn 200 on sucseful establishment update', async () => {
+      const response = await request(app.getHttpServer())
+        .patch('/establishment/1')
+        .set('Authorization', 'Bearer fake-jwt-token')
+        .field('name', 'Cafe')
+        .field('city', 'Miami')
+        .field('street', 'Street')
+        .field('building', '987')
+        .field('zipCode', '33129')
+        .field('totalSeats', 15);
+
+      expect(response.statusCode).toBe(200);
+      expect(Array.isArray(response.body)).toBe(false);
+      expect(response.body.id).toBe(1);
+      expect(response.body.ownerId).toBe(1);
+      expect(response.body.name).toBe('Cafe');
+      expect(response.body.city).toBe('Miami');
+      expect(response.body.description).toBe(
+        'Calm and comfortable establishment'
+      );
+      expect(response.body.totalSeats).toBe('15');
+    });
+
+    it('should update establishment cover photo if uploaded', async () => {
+      const response = await request(app.getHttpServer())
+        .patch('/establishment/1')
+        .set('Authorization', 'Bearer fake-jwt-token')
+        .attach('coverPhoto', Buffer.from('fake image content'), 'cover.jpg');
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body.coverPhoto).toBeDefined();
+    });
+
+    it('should return 401 if no authorization header provided', async () => {
+      const response = await request(app.getHttpServer())
+        .patch('/establishment/1')
+        .field('name', 'New Name');
+
+      expect(response.statusCode).toBe(401);
+    });
+
+    it('should return 403 if user does not own the establishment', async () => {
+      const response = await request(app.getHttpServer())
+        .patch('/establishment/2')
+        .set('Authorization', 'Bearer fake-jwt-token')
+        .field('name', 'Hacked Name');
+
+      expect(response.statusCode).toBe(403);
+    });
+
+    it('should return 404 if establishment does not exist', async () => {
+      const response = await request(app.getHttpServer())
+        .patch('/establishment/999999')
+        .set('Authorization', 'Bearer fake-jwt-token')
+        .field('name', 'New Name');
+
+      expect(response.statusCode).toBe(404);
     });
   });
 });
