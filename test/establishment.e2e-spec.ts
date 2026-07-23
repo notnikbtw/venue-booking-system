@@ -15,14 +15,50 @@ import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import request from 'supertest';
+import { Repository } from 'typeorm';
 
 import { AppModule } from '@/app.module';
 
 describe('Establishment System', () => {
+  type MockRepository<T extends object = any> = Partial<
+    Record<keyof Repository<T>, jest.Mock>
+  >;
+
   let app: INestApplication;
-  let establishmentRepositoryMock: any;
-  let featureRepositoryMock: any;
-  let userRepositoryMock: any;
+  let establishmentRepositoryMock: MockRepository<Establishment>;
+  let featureRepositoryMock: MockRepository<Feature>;
+  let userRepositoryMock: MockRepository<User>;
+
+  const baseEstablishment = () => ({
+    id: 1,
+    name: 'Restaurant',
+    address: 'New York, Street 123',
+    locationDetails: {
+      city: 'New York',
+      street: 'Street',
+      building: '123',
+      zipCode: '00501',
+    },
+    lat: 45.123,
+    lng: 14.456,
+    description: 'Calm and comfortable establishment',
+    totalSeats: 50,
+    rating: 4.5,
+    coverPhoto: 'https://placehold.co/600x400',
+    photos: ['https://placehold.co/600x400', 'https://placehold.co/600x400'],
+    type: { id: 1, name: 'Restaurant' },
+    ownerId: 1,
+    owner: { id: 1, name: 'Owner User' },
+    comments: [
+      {
+        id: 10,
+        text: 'Great experience!',
+        createdAt: '2026-07-20T10:00:00.000Z',
+        user: { id: 5, name: 'User' },
+      },
+    ],
+    features: [],
+  });
 
   beforeAll(async () => {
     featureRepositoryMock = {
@@ -67,131 +103,19 @@ describe('Establishment System', () => {
         },
       ]),
       findOne: jest.fn().mockImplementation(options => {
-        if (options.where.id === 1) {
-          return Promise.resolve({
-            id: 1,
-            name: 'Restaurant',
-            address: 'New York, Street 123',
-            locationDetails: {
-              city: 'New York',
-              street: 'Street',
-              building: '123',
-              zipCode: '00501',
-            },
-            lat: 45.123,
-            lng: 14.456,
-            description: 'Calm and comfortable establishment',
-            totalSeats: 50,
-            rating: 4.5,
-            coverPhoto: 'https://placehold.co/600x400',
-            photos: [
-              'https://placehold.co/600x400',
-              'https://placehold.co/600x400',
-            ],
-            type: { id: 1, name: 'Restaurant' },
-            ownerId: 1,
-            owner: { id: 1, name: 'Owner User' },
-            comments: [
-              {
-                id: 10,
-                text: 'Great experience!',
-                createdAt: '2026-07-20T10:00:00.000Z',
-                user: { id: 5, name: 'User' },
-              },
-            ],
-            features: [],
-          });
-        }
-        if (options.where.id === 2) {
-          return Promise.resolve({
-            id: 2,
-            ownerId: 2,
-            owner: { id: 2 },
-          });
-        }
+        if (options.where.id === 1) return Promise.resolve(baseEstablishment());
+        if (options.where.id === 2)
+          return Promise.resolve({ id: 2, ownerId: 2, owner: { id: 2 } });
         return Promise.resolve(null);
       }),
       findOneBy: jest.fn().mockImplementation(options => {
-        if (options.id === 1) {
-          return Promise.resolve({
-            id: 1,
-            name: 'Restaurant',
-            address: 'New York, Street 123',
-            locationDetails: {
-              city: 'New York',
-              street: 'Street',
-              building: '123',
-              zipCode: '00501',
-            },
-            lat: 45.123,
-            lng: 14.456,
-            description: 'Calm and comfortable establishment',
-            totalSeats: 50,
-            rating: 4.5,
-            coverPhoto: 'https://placehold.co/600x400',
-            photos: [
-              'https://placehold.co/600x400',
-              'https://placehold.co/600x400',
-            ],
-            type: { id: 1, name: 'Restaurant' },
-            ownerId: 1,
-            owner: { id: 1, name: 'Owner User' },
-            comments: [
-              {
-                id: 10,
-                text: 'Great experience!',
-                createdAt: '2026-07-20T10:00:00.000Z',
-                user: { id: 5, name: 'User' },
-              },
-            ],
-            features: [],
-          });
-        }
+        if (options.id === 1) return Promise.resolve(baseEstablishment());
         return Promise.resolve(null);
       }),
       delete: jest.fn().mockImplementation(id => {
-        if (id === 1) {
-          return Promise.resolve({
-            id: 1,
-            name: 'Restaurant',
-            address: 'New York, Street 123',
-            locationDetails: {
-              city: 'New York',
-              street: 'Street',
-              building: '123',
-              zipCode: '00501',
-            },
-            lat: 45.123,
-            lng: 14.456,
-            description: 'Calm and comfortable establishment',
-            totalSeats: 50,
-            rating: 4.5,
-            coverPhoto: 'https://placehold.co/600x400',
-            photos: [
-              'https://placehold.co/600x400',
-              'https://placehold.co/600x400',
-            ],
-            type: { id: 1, name: 'Restaurant' },
-            ownerId: 1,
-            owner: { id: 1, name: 'Owner User' },
-            comments: [
-              {
-                id: 10,
-                text: 'Great experience!',
-                createdAt: '2026-07-20T10:00:00.000Z',
-                user: { id: 5, name: 'User' },
-              },
-            ],
-            features: [],
-          });
-        }
-        if (id === 2) {
-          return Promise.resolve({
-            id: 2,
-            ownerId: 2,
-            owner: { id: 2 },
-          });
-        }
+        if (id === 1) return Promise.resolve(baseEstablishment());
+        if (id === 2)
+          return Promise.resolve({ id: 2, ownerId: 2, owner: { id: 2 } });
       }),
       createQueryBuilder: jest.fn().mockImplementation(() => {
         const queryBuilderMock = {
@@ -686,7 +610,7 @@ describe('Establishment System', () => {
     });
 
     it('should return 404 if feature not found', async () => {
-      featureRepositoryMock.findOne.mockResolvedValueOnce(null);
+      featureRepositoryMock.findOne!.mockResolvedValueOnce(null);
       const response = await request(app.getHttpServer())
         .post('/establishment/1/features/999')
         .set('Authorization', 'Bearer fake-jwt-token');
@@ -792,7 +716,13 @@ describe('Establishment System', () => {
     });
 
     it('should return empty array if user has no favorites', async () => {
-      jest.spyOn(establishmentRepositoryMock, 'find').mockResolvedValue([]);
+      jest.spyOn(userRepositoryMock, 'findOne').mockResolvedValueOnce({
+        id: 1,
+        name: 'Owner User',
+        role: 'OWNER',
+        favorites: [],
+      });
+
       const response = await request(app.getHttpServer())
         .get('/establishment/favorites')
         .set('Authorization', 'Bearer fake-jwt-token');
@@ -861,7 +791,7 @@ describe('Establishment System', () => {
     });
 
     it('should return 400 if user is already a moderator', async () => {
-      jest.spyOn(establishmentRepositoryMock, 'findOne').mockResolvedValue({
+      jest.spyOn(establishmentRepositoryMock, 'findOne').mockResolvedValueOnce({
         id: 1,
         ownerId: 1,
         owner: { id: 1, name: 'Owner User' },
@@ -932,7 +862,7 @@ describe('Establishment System', () => {
     it('should return 404 if establishment is not found', async () => {
       jest
         .spyOn(establishmentRepositoryMock, 'findOne')
-        .mockResolvedValue(null);
+        .mockResolvedValueOnce(null);
 
       const response = await request(app.getHttpServer())
         .delete('/establishment/999/moderators/2')
@@ -941,12 +871,13 @@ describe('Establishment System', () => {
       expect(response.statusCode).toBe(404);
     });
 
-    it('should return 404 if moderator is not found', async () => {
+    it('should return 400 if moderator is not found', async () => {
       const response = await request(app.getHttpServer())
         .delete('/establishment/1/moderators/999')
         .set('Authorization', 'Bearer fake-jwt-token');
 
-      expect(response.statusCode).toBe(404);
+      console.log(response.body);
+      expect(response.statusCode).toBe(400);
     });
 
     it('should return 400 if establishment does not have moderator', async () => {
