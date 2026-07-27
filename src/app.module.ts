@@ -1,6 +1,7 @@
 import { databaseConfig } from '@config/database.config';
 import { validationSchema } from '@config/env.validation';
 import { throttlerConfig } from '@config/throttler.config';
+import { typeOrmConfig } from '@config/typeorm.config';
 import { AuthModule } from '@modules/auth/auth.module';
 import { BookingModule } from '@modules/booking/booking.module';
 import { CommentModule } from '@modules/comment/comment.module';
@@ -20,6 +21,7 @@ import { SeederModule } from '@/database/seeders/seeder.module';
 @Module({
   imports: [
     ThrottlerModule.forRoot(throttlerConfig),
+    TypeOrmModule.forRoot(typeOrmConfig),
     ConfigModule.forRoot({
       load: [databaseConfig],
       isGlobal: true,
