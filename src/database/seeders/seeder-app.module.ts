@@ -1,19 +1,17 @@
+import { typeOrmConfig } from '@config/typeorm.config';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
+import { TypeOrmModule } from '@nestjs/typeorm';
 
-import databaseConfig from '@/config/database.config';
 import { SeederModule } from '@/database/seeders/seeder.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
-      load: [databaseConfig],
+      isGlobal: true,
+      envFilePath: process.env.NODE_ENV === 'test' ? '.env.test' : '.env',
     }),
-    TypeOrmModule.forRoot({
-      ...databaseConfig(),
-      autoLoadEntities: true,
-    } as TypeOrmModuleOptions),
+    TypeOrmModule.forRoot(typeOrmConfig),
     SeederModule,
   ],
 })

@@ -28,28 +28,29 @@ A production-ready, full-featured venue and table booking system backend built w
 ## Environment Variables Reference
 
 Copy `.env.example` to `.env` and fill in your local settings:
+
 ```bash
 cp .env.example .env
 ```
 
-| Variable | Description | Example / Default | Required / Validation |
-| :--- | :--- | :--- | :--- |
-| `DB_TYPE` | Type of DBMS | `postgres` | Yes (in `database.config`) |
-| `DB_HOST` | Database host | `localhost` (use `db` inside Docker) | Yes |
-| `DB_PORT` | Database port | `5432` | Yes |
-| `DB_USERNAME` | Database username | `postgres` | Yes |
-| `DB_PASSWORD` | Database password | `postgres` | Yes |
-| `DB_DATABASE` | Database name | `venue_booking_system` | Yes |
-| `GOOGLE_MAPS_API_KEY` | Google Maps Platform API key | `AIzaSy...` | Yes |
-| `JWT_ACCESS_SECRET` | Secret key for access token signing | `your_access_secret_here` | Yes |
-| `JWT_REFRESH_SECRET` | Secret key for refresh token signing | `your_refresh_secret_here` | Yes |
-| `JWT_ACCESS_EXPIRES_IN` | Access token lifespan (in **seconds**) | `900` (15 mins) | Yes (Must be a number) |
-| `JWT_REFRESH_EXPIRES_IN`| Refresh token lifespan (in **seconds**) | `604800` (7 days) | Yes (Must be a number) |
-| `UPLOADS_PATH` | Base path for media uploads | `uploads` | Default is `uploads` |
-| `UPLOADS_ESTABLISHMENTS_PATH`| Path prefix for establishment photos | `uploads/establishments` | Yes |
-| `MINIMUM_COMMENTS` | Threshold for rating metric computations | `3` | Yes |
-| `GLOBAL_AVERAGE_RATING`| Fallback rating if reviews are insufficient | `1` | Yes |
-| `FRONTEND_URL` | Allowed CORS origin URL | `http://localhost:5173` | Optional |
+| Variable                      | Description                                 | Example / Default                    | Required / Validation     |
+| :---------------------------- | :------------------------------------------ | :----------------------------------- | :------------------------ |
+| `DB_TYPE`                     | Type of DBMS                                | `postgres`                           | Yes (in `data-source.ts`) |
+| `DB_HOST`                     | Database host                               | `localhost` (use `db` inside Docker) | Yes                       |
+| `DB_PORT`                     | Database port                               | `5432`                               | Yes                       |
+| `DB_USERNAME`                 | Database username                           | `postgres`                           | Yes                       |
+| `DB_PASSWORD`                 | Database password                           | `postgres`                           | Yes                       |
+| `DB_DATABASE`                 | Database name                               | `venue_booking_system`               | Yes                       |
+| `GOOGLE_MAPS_API_KEY`         | Google Maps Platform API key                | `AIzaSy...`                          | Yes                       |
+| `JWT_ACCESS_SECRET`           | Secret key for access token signing         | `your_access_secret_here`            | Yes                       |
+| `JWT_REFRESH_SECRET`          | Secret key for refresh token signing        | `your_refresh_secret_here`           | Yes                       |
+| `JWT_ACCESS_EXPIRES_IN`       | Access token lifespan (in **seconds**)      | `900` (15 mins)                      | Yes (Must be a number)    |
+| `JWT_REFRESH_EXPIRES_IN`      | Refresh token lifespan (in **seconds**)     | `604800` (7 days)                    | Yes (Must be a number)    |
+| `UPLOADS_PATH`                | Base path for media uploads                 | `uploads`                            | Default is `uploads`      |
+| `UPLOADS_ESTABLISHMENTS_PATH` | Path prefix for establishment photos        | `uploads/establishments`             | Yes                       |
+| `MINIMUM_COMMENTS`            | Threshold for rating metric computations    | `3`                                  | Yes                       |
+| `GLOBAL_AVERAGE_RATING`       | Fallback rating if reviews are insufficient | `1`                                  | Yes                       |
+| `FRONTEND_URL`                | Allowed CORS origin URL                     | `http://localhost:5173`              | Optional                  |
 
 ---
 
@@ -58,12 +59,15 @@ cp .env.example .env
 ### Method 1: Local Development
 
 1. **Install dependencies**:
+
    ```bash
    npm install
    ```
 
 2. **Initialize & Seed Database**:
+
    > **Warning**: Seeding will drop the existing database, synchronize schemas, and populate sample users, types, establishments, comments, and working schedules.
+
    ```bash
    npm run seed
    ```
@@ -102,6 +106,7 @@ This compiles the NestJS app (running in watch mode by default) and mounts a Pos
 ## API Documentation (Swagger)
 
 When running, the interactive Swagger UI and schemas are served at:
+
 - **Swagger Interactive UI**: `http://localhost:3000/api` (or `http://localhost:8000/api` under Docker Compose)
 - **Swagger JSON Spec**: `http://localhost:3000/api-json` (or `http://localhost:8000/api-json` under Docker Compose)
 
@@ -111,27 +116,29 @@ When running, the interactive Swagger UI and schemas are served at:
 
 The backend enforces role guards for endpoints based on user roles:
 
-| Action / Resource | Guest (No JWT) | USER | MODERATOR | OWNER | SUPER_ADMIN |
-| :--- | :---: | :---: | :---: | :---: | :---: |
-| Browse venues / check schedules | Yes | Yes | Yes | Yes | Yes |
-| Book a table / Favorite a venue | | Yes | Yes | Yes | Yes |
-| Manage working schedules for venue | | | | Owner of venue | Yes |
-| Assign / Remove venue moderators | | | | Owner of venue | Yes |
-| Add new Custom Features/Amenities | | | | | Yes |
-| Delete comments | | | If assigned to venue | If owner of venue | Yes |
-| Update user profiles & roles | | | | | Yes |
+| Action / Resource                  | Guest (No JWT) | USER |      MODERATOR       |       OWNER       | SUPER_ADMIN |
+| :--------------------------------- | :------------: | :--: | :------------------: | :---------------: | :---------: |
+| Browse venues / check schedules    |      Yes       | Yes  |         Yes          |        Yes        |     Yes     |
+| Book a table / Favorite a venue    |                | Yes  |         Yes          |        Yes        |     Yes     |
+| Manage working schedules for venue |                |      |                      |  Owner of venue   |     Yes     |
+| Assign / Remove venue moderators   |                |      |                      |  Owner of venue   |     Yes     |
+| Add new Custom Features/Amenities  |                |      |                      |                   |     Yes     |
+| Delete comments                    |                |      | If assigned to venue | If owner of venue |     Yes     |
+| Update user profiles & roles       |                |      |                      |                   |     Yes     |
 
 ---
 
 ## API Endpoints Reference
 
 ### Authentication (`/auth`)
+
 - `POST /auth/register` - Register a new user profile
 - `POST /auth/login` - Login user (returns access and refresh tokens)
 - `POST /auth/refresh` - Refresh access token
 - `POST /auth/logout` - Logout user
 
 ### User Profiles (`/users`)
+
 - `GET /users/me` - Get current authenticated user profile
 - `PATCH /users/me` - Update current user profile (supports avatar upload)
 - `GET /users/:id` - Get public user details by ID
@@ -140,6 +147,7 @@ The backend enforces role guards for endpoints based on user roles:
 - `DELETE /users/:id` - Delete user by ID (SUPER_ADMIN only)
 
 ### Establishments (`/establishment`)
+
 - `GET /establishment` - Get all establishments (paginated)
 - `GET /establishment/nearby` - Get establishments within a certain radius of coordinates using Google Maps
 - `GET /establishment/favorites` - Get favorite establishments for the logged-in user
@@ -158,6 +166,7 @@ The backend enforces role guards for endpoints based on user roles:
 - `DELETE /establishment/:id/moderators/:userId` - Remove moderator from the establishment (Owner only)
 
 ### Bookings & Reservations (`/booking`)
+
 - `POST /booking` - Create a reservation (Rate-limited, JWT required)
 - `GET /booking` - Retrieve all bookings in the system
 - `GET /booking/my-bookings` - Get bookings created by the current user
@@ -165,6 +174,7 @@ The backend enforces role guards for endpoints based on user roles:
 - `GET /booking/:id` - Get details of a booking by ID
 
 ### Reviews & Comments (`/comment`)
+
 - `POST /comment` - Add a new comment and rating to an establishment
 - `GET /comment/comments` - Get all comments (paginated)
 - `GET /comment/establishment/:id` - Get comments for an establishment (paginated)
@@ -172,6 +182,7 @@ The backend enforces role guards for endpoints based on user roles:
 - `DELETE /comment/:id` - Delete comment (Requires role SUPER_ADMIN, MODERATOR assigned to the venue, or OWNER of the venue)
 
 ### Establishment Types (`/establishment-type`)
+
 - `GET /establishment-type` - Get all establishment categories
 - `GET /establishment-type/:id` - Get specific type details by ID
 - `POST /establishment-type` - Create a category (SUPER_ADMIN only)
@@ -179,6 +190,7 @@ The backend enforces role guards for endpoints based on user roles:
 - `DELETE /establishment-type/:id` - Delete category (SUPER_ADMIN only)
 
 ### Venue Features & Amenities (`/features`)
+
 - `GET /features` - Get all features (e.g. WiFi, Parking)
 - `GET /features/:id` - Get feature details by ID
 - `POST /features` - Create feature (supports icon image upload)
@@ -186,6 +198,7 @@ The backend enforces role guards for endpoints based on user roles:
 - `DELETE /features/:id` - Delete feature
 
 ### Operating Schedules (`/schedule`)
+
 - `GET /schedule/:establishmentId` - Get daily schedules for a venue
 - `POST /schedule` - Add schedule items (Establishment Owner only)
 - `PATCH /schedule/:id` - Update a specific schedule item (Establishment Owner only)
