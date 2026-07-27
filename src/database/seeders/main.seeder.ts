@@ -23,6 +23,19 @@ export class MainSeeder {
     private readonly scheduleSeeder: ScheduleSeeder
   ) {}
 
+  private async cleanDatabase() {
+    const entities = this.dataSource.entityMetadatas;
+    const tableNames = entities
+      .map(entity => `"${entity.tableName}"`)
+      .join(', ');
+
+    if (tableNames.length > 0) {
+      await this.dataSource.query(
+        `TRUNCATE TABLE ${tableNames} RESTART IDENTITY CASCADE;`
+      );
+    }
+  }
+
   async run() {
     const { confirm } = await prompts({
       type: 'confirm',
@@ -38,8 +51,7 @@ export class MainSeeder {
     }
 
     console.log('Seeding started...');
-    await this.dataSource.dropDatabase();
-    await this.dataSource.synchronize();
+    await this.cleanDatabase();
     await this.userSeeder.seedData({
       user: 4,
       moderator: 2,
