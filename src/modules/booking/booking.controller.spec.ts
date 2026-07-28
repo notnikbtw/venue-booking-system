@@ -3,6 +3,10 @@ import { BookingService } from '@modules/booking/booking.service';
 import { Booking } from '@modules/booking/entities/booking.entity';
 import { Test, TestingModule } from '@nestjs/testing';
 
+interface RequestWithUser {
+  user: { id: number };
+}
+
 describe('BookingController', () => {
   let controller: BookingController;
   let service: BookingService;
@@ -36,15 +40,15 @@ describe('BookingController', () => {
     expect(controller).toBeDefined();
   });
 
-  describe('booking', () => {
-    it('should create a new booking', async () => {
-      const createBookingDto = {
-        establishment: 1,
-        bookingDate: '2025-12-25',
-        bookingTime: '18:30',
-        numberOfGuests: 2,
-      };
+  describe('create', () => {
+    const createBookingDto = {
+      establishment: 1,
+      bookingDate: '2025-12-25',
+      bookingTime: '18:30',
+      numberOfGuests: 2,
+    };
 
+    it('should create a new booking and pass the current user id to the service', async () => {
       const mockBooking = {
         id: 1,
         ...createBookingDto,
@@ -56,15 +60,17 @@ describe('BookingController', () => {
         .spyOn(service, 'create')
         .mockResolvedValue(mockBooking as unknown as Booking);
 
-      const result = await controller.create(createBookingDto, {
-        user: { id: 1 },
-      });
+      const req: RequestWithUser = { user: { id: 1 } };
+      const result = await controller.create(createBookingDto, req);
 
       expect(result).toEqual(mockBooking);
       expect(service.create).toHaveBeenCalledWith(createBookingDto, 1);
+      expect(service.create).toHaveBeenCalledTimes(1);
     });
+  });
 
-    it('should return a list of bookings for the current user', async () => {
+  describe('getUserBookings', () => {
+    it("should return the current user's bookings", async () => {
       const mockData = [
         {
           user: { id: 1, name: 'User 1' },
@@ -81,13 +87,16 @@ describe('BookingController', () => {
         .spyOn(service, 'getUserBookings')
         .mockResolvedValue(mockData as unknown as Booking[]);
 
-      const result = await controller.getUserBookings({ user: { id: 1 } });
+      const req: RequestWithUser = { user: { id: 1 } };
+      const result = await controller.getUserBookings(req);
 
       expect(result).toEqual(mockData);
       expect(service.getUserBookings).toHaveBeenCalledWith(1);
     });
+  });
 
-    it('should return a list of bookings for a specific establishment', async () => {
+  describe('getEstablishmentBookings', () => {
+    it('should return bookings for the given establishment id, converted to a number', async () => {
       const mockData = [
         {
           establishment: { id: 1, name: 'Establishment 1' },
@@ -109,8 +118,10 @@ describe('BookingController', () => {
       expect(result).toEqual(mockData);
       expect(service.getEstablishmentBookings).toHaveBeenCalledWith(1);
     });
+  });
 
-    it('should return a list of all reservations from the service', async () => {
+  describe('getAllBookings', () => {
+    it('should return all bookings from the service', async () => {
       const mockData = [
         {
           id: 1,
@@ -133,9 +144,12 @@ describe('BookingController', () => {
       expect(result).toEqual(mockData);
       expect(service.getAllBookings).toHaveBeenCalledTimes(1);
     });
+  });
 
-    it('should return booking by ID', async () => {
+  describe('getBookingById', () => {
+    it('should return a booking by id, converted to a number', async () => {
       const mockBooking = { id: 1, name: 'Booking 1' };
+
       jest
         .spyOn(service, 'getBookingById')
         .mockResolvedValue(mockBooking as unknown as Booking);
