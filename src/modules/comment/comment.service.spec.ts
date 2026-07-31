@@ -113,6 +113,9 @@ describe('CommentService', () => {
         .spyOn(establishmentRepository, 'findOne')
         .mockResolvedValue(mockEstablishment);
       jest
+        .spyOn(commentRepository, 'createQueryBuilder')
+        .mockReturnValue(mockQueryBuilder);
+      jest
         .spyOn(establishmentRepository, 'save')
         .mockResolvedValue(mockEstablishment);
       jest
@@ -249,6 +252,10 @@ describe('CommentService', () => {
       jest
         .spyOn(commentRepository, 'createQueryBuilder')
         .mockReturnValue(mockQueryBuilder);
+      jest.spyOn(establishmentRepository, 'findOne').mockResolvedValue({
+        id: 1,
+        comments: [],
+      } as unknown as Establishment);
 
       const result = await service.findAllComments(pageOptionsDto);
 
@@ -304,6 +311,9 @@ describe('CommentService', () => {
       ] as Comment[];
 
       jest
+        .spyOn(establishmentRepository, 'findOneBy')
+        .mockResolvedValue(mockEstablishment);
+      jest
         .spyOn(commentRepository, 'createQueryBuilder')
         .mockReturnValue(mockQueryBuilder);
 
@@ -336,6 +346,9 @@ describe('CommentService', () => {
       const mockComments = [] as Comment[];
 
       jest
+        .spyOn(establishmentRepository, 'findOneBy')
+        .mockResolvedValue({ id: 1 } as Establishment);
+      jest
         .spyOn(commentRepository, 'createQueryBuilder')
         .mockReturnValue(mockQueryBuilder);
 
@@ -352,6 +365,25 @@ describe('CommentService', () => {
         'comments.establishment = :establishmentId',
         { establishmentId: 1 }
       );
+    });
+
+    it('throws NotFoundException when establishment does not exist', async () => {
+      const pageOptionsDto = {
+        page: 1,
+        take: 10,
+        skip: 0,
+        order: 'DESC',
+      } as PageOptionsDto;
+
+      jest
+        .spyOn(commentRepository, 'createQueryBuilder')
+        .mockReturnValue(mockQueryBuilder);
+
+      jest.spyOn(establishmentRepository, 'findOneBy').mockResolvedValue(null);
+
+      await expect(
+        service.findByEstablishment(999, pageOptionsDto)
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
