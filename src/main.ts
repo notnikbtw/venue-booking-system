@@ -1,14 +1,21 @@
+import { readFileSync } from 'fs';
 import { join } from 'path';
 
+import { GlobalExceptionFilter } from '@common/filters/globalExceptionFilter';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { Logger } from 'nestjs-pino';
 
-import { AppModule } from './app.module';
+import { AppModule } from '@/app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    bufferLogs: true,
+  });
+
+  app.useLogger(app.get(Logger));
 
   app.enableCors({
     origin: process.env.FRONTEND_URL ?? 'http://localhost:5173',
@@ -22,13 +29,19 @@ async function bootstrap() {
   );
 
   app.useGlobalPipes(new ValidationPipe({ transform: true }));
+  app.useGlobalFilters(new GlobalExceptionFilter());
+
+  const packageJson = JSON.parse(
+    readFileSync(join(__dirname, '..', 'package.json'), 'utf8')
+  );
 
   const config = new DocumentBuilder()
-    .setTitle('My REST API')
-    .setDescription('The API description')
-    .setVersion('1.0')
+    .setTitle('Venue Booking System API')
+    .setDescription(
+      'API documentation for the Venue Booking System backend application.'
+    )
+    .setVersion(packageJson.version)
     .addBearerAuth()
-    .addTag('users')
     .build();
 
   app.getHttpAdapter().get('/', (req, res) => {});

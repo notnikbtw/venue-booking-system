@@ -6,6 +6,7 @@ services:
     ports:
       - "8000:3000"
     environment:
+      NODE_ENV: ${NODE_ENV}
       DB_TYPE: ${DB_TYPE}
       DB_HOST: db
       DB_PORT: ${DB_PORT}
@@ -37,6 +38,8 @@ services:
       POSTGRES_USER: ${DB_USERNAME}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_DATABASE}
+    ports:
+      - "5432:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
     healthcheck:

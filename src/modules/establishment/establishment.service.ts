@@ -505,6 +505,14 @@ export class EstablishmentService {
   }
 
   async addFavorite(userId: number, establishmentId: number) {
+    const establishment = await this.establishmentRepository.findOneBy({
+      id: establishmentId,
+    });
+
+    if (!establishment) {
+      throw new NotFoundException(`Establishment ${establishmentId} not found`);
+    }
+
     const user = await this.userRepository.findOne({
       where: { id: userId },
     });
@@ -526,6 +534,14 @@ export class EstablishmentService {
   }
 
   async removeFavorite(userId: number, establishmentId: number) {
+    const establishment = await this.establishmentRepository.findOneBy({
+      id: establishmentId,
+    });
+
+    if (!establishment) {
+      throw new NotFoundException(`Establishment ${establishmentId} not found`);
+    }
+
     const user = await this.userRepository.findOne({
       where: { id: userId },
     });
@@ -536,6 +552,12 @@ export class EstablishmentService {
 
     if (!user.favorites) {
       user.favorites = [];
+    }
+
+    if (!user.favorites.includes(establishmentId)) {
+      throw new BadRequestException(
+        `User ${userId} does not have this establishment as favorite`
+      );
     }
 
     user.favorites = user.favorites.filter(id => id !== establishmentId);
@@ -616,7 +638,9 @@ export class EstablishmentService {
     );
 
     if (alreadyModerator) {
-      return establishment;
+      throw new BadRequestException(
+        `User ${userId} is already a moderator of this establishment`
+      );
     }
 
     establishment.moderators.push(user);
@@ -651,6 +675,13 @@ export class EstablishmentService {
     ) {
       throw new BadRequestException(
         `You don't have permission to remove moderators from this establishment`
+      );
+    }
+
+    const moderator = establishment.moderators.find(mod => mod.id === userId);
+    if (!moderator) {
+      throw new BadRequestException(
+        `User ${userId} is not a moderator of this establishment`
       );
     }
 
