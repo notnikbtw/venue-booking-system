@@ -876,7 +876,6 @@ describe('Establishment System', () => {
         .delete('/establishment/1/moderators/999')
         .set('Authorization', 'Bearer fake-jwt-token');
 
-      console.log(response.body);
       expect(response.statusCode).toBe(400);
     });
 

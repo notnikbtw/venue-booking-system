@@ -122,6 +122,14 @@ export class CommentService {
       .skip(pageOptionsDto.skip)
       .take(pageOptionsDto.take);
 
+    const establishment = await this.establishmentRepository.findOneBy({
+      id: establishmentId,
+    });
+
+    if (!establishment) {
+      throw new NotFoundException(`Establishment ${establishmentId} not found`);
+    }
+
     const itemCount = await queryBuilder.getCount();
 
     const { entities } = await queryBuilder.getRawAndEntities();
