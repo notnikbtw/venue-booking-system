@@ -46,7 +46,7 @@ export class AuthController {
   @Post('login')
   @Throttle({ auth: { limit: 5, ttl: 60000 } })
   @ApiOperation({ summary: 'Login user' })
-  @ApiCreatedResponse({ description: 'Login successful' })
+  @ApiOkResponse({ description: 'Login successful' })
   @ApiNotFoundResponse({ description: 'User not found' })
   login(@Body() loginAuthDto: LoginDto) {
     return this.authService.login(loginAuthDto);
