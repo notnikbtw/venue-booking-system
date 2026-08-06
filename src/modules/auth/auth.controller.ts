@@ -80,15 +80,4 @@ export class AuthController {
   logout(@Request() req) {
     return this.authService.logout(req.user.id);
   }
-
-  @Post('logout-all')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Logout from all devices' })
-  @ApiCreatedResponse({
-    description: 'Logged out from all devices successfully',
-  })
-  logoutAllDevices(@Request() req) {
-    return this.authService.logoutAllDevices(req.user.id);
-  }
 }
