@@ -1,3 +1,4 @@
+import { Booking } from '@modules/booking/entities/booking.entity';
 import { User, UserRole } from '@modules/users/entities/user.entity';
 import {
   INestApplication,
@@ -19,6 +20,7 @@ describe('Auth', () => {
   let app: INestApplication;
   let userRepo: Repository<User>;
   let refreshTokenRepo: Repository<RefreshToken>;
+  let bookingRepo: Repository<Booking>;
   let seededUser: User | undefined;
 
   beforeAll(async () => {
@@ -49,7 +51,7 @@ describe('Auth', () => {
             return {
               type: 'better-sqlite3',
               database: ':memory:',
-              entities: [User, RefreshToken],
+              entities: [User, RefreshToken, Booking],
               synchronize: true,
             };
           }
@@ -65,6 +67,7 @@ describe('Auth', () => {
 
     userRepo = moduleFixture.get(getRepositoryToken(User));
     refreshTokenRepo = moduleFixture.get(getRepositoryToken(RefreshToken));
+    bookingRepo = moduleFixture.get(getRepositoryToken(Booking));
   });
 
   afterAll(async () => {
@@ -72,6 +75,7 @@ describe('Auth', () => {
   });
 
   beforeEach(async () => {
+    await bookingRepo.createQueryBuilder().delete().execute();
     await refreshTokenRepo.createQueryBuilder().delete().execute();
     await userRepo.createQueryBuilder().delete().execute();
 
@@ -166,7 +170,7 @@ describe('Auth', () => {
       const response = await request(app.getHttpServer())
         .post('/auth/login')
         .send({
-          email: 'john@example.com',
+          email: 'notfound@example.com',
           password: 'Password123',
         });
 
