@@ -235,7 +235,9 @@ describe('Booking System', () => {
     });
 
     it('should respond with 401 if user is not authorized', async () => {
-      const response = await request(app.getHttpServer()).get('/booking/1');
+      const response = await request(app.getHttpServer()).get(
+        `/booking/${seededBooking?.id}`
+      );
 
       expect(response.statusCode).toBe(401);
       expect(response.body.message).toBe('Unauthorized');

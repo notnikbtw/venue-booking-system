@@ -37,11 +37,7 @@ describe('Comment system', () => {
           const request = context.switchToHttp().getRequest();
           const authHeader = request.headers.authorization;
 
-          if (
-            !authHeader ||
-            !authHeader.startsWith('Bearer ') ||
-            authHeader === 'Bearer '
-          ) {
+          if (!authHeader || !authHeader.startsWith('Bearer ')) {
             throw new UnauthorizedException();
           }
 
@@ -54,20 +50,18 @@ describe('Comment system', () => {
       })
       .overrideProvider(ConfigService)
       .useValue({
-        get: jest.fn().mockImplementation((key: string) => {
+        get: (key: string) => {
           if (key === 'database') {
             return {
               type: 'better-sqlite3',
               database: ':memory:',
-              entities: [],
+              entities: [User, Booking, Comment, Establishment],
               synchronize: true,
             };
           }
           return 'some-value';
-        }),
-        getOrThrow: jest.fn().mockImplementation((key: string) => {
-          return 'some-value';
-        }),
+        },
+        getOrThrow: () => 'some-value',
       })
       .compile();
 
@@ -203,7 +197,7 @@ describe('Comment system', () => {
   });
 
   describe('PATCH /comment/:id', () => {
-    it('should retutn 200 on successful edit comment', async () => {
+    it('should return 200 on successful edit comment', async () => {
       const response = await request(app.getHttpServer())
         .patch(`/comment/${seededComment.id}`)
         .set('Authorization', 'Bearer fake-jwt-token')
@@ -215,7 +209,7 @@ describe('Comment system', () => {
       expect(response.statusCode).toBe(200);
     });
 
-    it('shoult return 401 if user is not authenticated', async () => {
+    it('should return 401 if user is not authenticated', async () => {
       const response = await request(app.getHttpServer())
         .patch(`/comment/${seededComment.id}`)
         .send({
@@ -227,7 +221,7 @@ describe('Comment system', () => {
       expect(response.body.message).toBe('Unauthorized');
     });
 
-    it('shoult return 404 if comment not found', async () => {
+    it('should return 404 if comment not found', async () => {
       const response = await request(app.getHttpServer())
         .patch('/comment/999')
         .set('Authorization', 'Bearer fake-jwt-token')

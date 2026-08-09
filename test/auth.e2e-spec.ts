@@ -51,7 +51,7 @@ describe('Auth', () => {
             return {
               type: 'better-sqlite3',
               database: ':memory:',
-              entities: [User, RefreshToken, Booking, Comment],
+              entities: [User, RefreshToken, Booking],
               synchronize: true,
             };
           }
@@ -251,7 +251,7 @@ describe('Auth', () => {
     it('should return 400 if role is invalid', async () => {
       const loginRes = await request(app.getHttpServer())
         .post('/auth/login')
-        .send({ email: 'john@example.com', password: 'Password 123' });
+        .send({ email: 'john@example.com', password: 'Password123' });
 
       const response = await request(app.getHttpServer())
         .patch('/auth/1/role')

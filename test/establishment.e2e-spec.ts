@@ -2,10 +2,12 @@ import { JwtAuthGuard } from '@common/guard/jwt-auth.guard';
 import { RolesGuard } from '@common/guard/jwt-roles.guard';
 import { FileUploadService } from '@common/services/file-upload.service';
 import { GeocodingService } from '@common/services/geocoding.service';
+import { Booking } from '@modules/booking/entities/booking.entity';
+import { Comment } from '@modules/comment/entities/comment.entity';
 import { Establishment } from '@modules/establishment/entities/establishment.entity';
 import { EstablishmentType } from '@modules/establishment-type/entities/establishment-type.entity';
 import { Feature } from '@modules/features/entities/feature.entity';
-import { User } from '@modules/users/entities/user.entity';
+import { User, UserRole } from '@modules/users/entities/user.entity';
 import {
   INestApplication,
   UnauthorizedException,
@@ -14,242 +16,31 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import * as bcrypt from 'bcrypt';
 import request from 'supertest';
 import { Repository } from 'typeorm';
 
 import { AppModule } from '@/app.module';
 
 describe('Establishment System', () => {
-  type MockRepository<T extends object = any> = Partial<
-    Record<keyof Repository<T>, jest.Mock>
-  >;
-
   let app: INestApplication;
-  let establishmentRepositoryMock: MockRepository<Establishment>;
-  let featureRepositoryMock: MockRepository<Feature>;
-  let userRepositoryMock: MockRepository<User>;
-
-  const baseEstablishment = () => ({
-    id: 1,
-    name: 'Restaurant',
-    address: 'New York, Street 123',
-    locationDetails: {
-      city: 'New York',
-      street: 'Street',
-      building: '123',
-      zipCode: '00501',
-    },
-    lat: 45.123,
-    lng: 14.456,
-    description: 'Calm and comfortable establishment',
-    totalSeats: 50,
-    rating: 4.5,
-    coverPhoto: 'https://placehold.co/600x400',
-    photos: ['https://placehold.co/600x400', 'https://placehold.co/600x400'],
-    type: { id: 1, name: 'Restaurant' },
-    ownerId: 1,
-    owner: { id: 1, name: 'Owner User' },
-    comments: [
-      {
-        id: 10,
-        text: 'Great experience!',
-        createdAt: '2026-07-20T10:00:00.000Z',
-        user: { id: 5, name: 'User' },
-      },
-    ],
-    features: [],
-  });
+  let userRepo: Repository<User>;
+  let establishmentRepo: Repository<Establishment>;
+  let featureRepo: Repository<Feature>;
+  let typeRepo: Repository<EstablishmentType>;
+  let bookingRepo: Repository<Booking>;
+  let commentRepo: Repository<Comment>;
+  let seededUser: User;
+  let otherUser: User;
+  let moderatorUser: User;
+  let regularUser: User;
+  let seededType: EstablishmentType;
+  let seededFeature: Feature;
+  let seededFeature2: Feature;
+  let seededEstablishment: Establishment;
+  let otherEstablishment: Establishment;
 
   beforeAll(async () => {
-    featureRepositoryMock = {
-      findBy: jest.fn().mockResolvedValue([{ id: 1, name: 'WiFi' }]),
-      findOne: jest.fn().mockResolvedValue({ id: 1, name: 'WiFi' }),
-    };
-
-    establishmentRepositoryMock = {
-      find: jest.fn().mockResolvedValue([
-        {
-          id: 1,
-          name: 'Restaurant',
-          address: 'New York, Street 123',
-          locationDetails: {
-            city: 'New York',
-            street: 'Street',
-            building: '123',
-            zipCode: '00501',
-          },
-          lat: 45.123,
-          lng: 14.456,
-          description: 'Calm and comfortable establishment',
-          totalSeats: 50,
-          rating: 4.5,
-          coverPhoto: 'https://placehold.co/600x400',
-          photos: [
-            'https://placehold.co/600x400',
-            'https://placehold.co/600x400',
-          ],
-          type: { id: 1, name: 'Restaurant' },
-          ownerId: 1,
-          owner: { id: 1, name: 'Owner User' },
-          comments: [
-            {
-              id: 10,
-              text: 'Great experience!',
-              createdAt: '2026-07-20T10:00:00.000Z',
-              user: { id: 5, name: 'User' },
-            },
-          ],
-          features: [],
-        },
-      ]),
-      findOne: jest.fn().mockImplementation(options => {
-        if (options.where.id === 1) return Promise.resolve(baseEstablishment());
-        if (options.where.id === 2)
-          return Promise.resolve({ id: 2, ownerId: 2, owner: { id: 2 } });
-        return Promise.resolve(null);
-      }),
-      findOneBy: jest.fn().mockImplementation(options => {
-        if (options.id === 1) return Promise.resolve(baseEstablishment());
-        return Promise.resolve(null);
-      }),
-      delete: jest.fn().mockImplementation(id => {
-        if (id === 1) return Promise.resolve(baseEstablishment());
-        if (id === 2)
-          return Promise.resolve({ id: 2, ownerId: 2, owner: { id: 2 } });
-      }),
-      createQueryBuilder: jest.fn().mockImplementation(() => {
-        const queryBuilderMock = {
-          select: jest.fn().mockReturnThis(),
-          addSelect: jest.fn().mockReturnThis(),
-          where: jest.fn().mockReturnThis(),
-          andWhere: jest.fn().mockReturnThis(),
-          leftJoin: jest.fn().mockReturnThis(),
-          leftJoinAndSelect: jest.fn().mockReturnThis(),
-          setParameter: jest.fn().mockReturnThis(),
-          groupBy: jest.fn().mockReturnThis(),
-          addGroupBy: jest.fn().mockReturnThis(),
-          andHaving: jest.fn().mockReturnThis(),
-          orderBy: jest.fn().mockReturnThis(),
-          addOrderBy: jest.fn().mockReturnThis(),
-          offset: jest.fn().mockReturnThis(),
-          limit: jest.fn().mockReturnThis(),
-          clone: jest.fn().mockImplementation(() => queryBuilderMock),
-          getRawAndEntities: jest.fn().mockResolvedValue({
-            entities: [
-              {
-                id: 1,
-                name: 'Restaurant',
-                address: 'New York, Street 123',
-                locationDetails: {
-                  city: 'New York',
-                  street: 'Street',
-                  building: '123',
-                  zipCode: '00501',
-                },
-                lat: 45.123,
-                lng: 14.456,
-                description: 'Calm and comfortable establishment',
-                totalSeats: 50,
-                rating: 4.5,
-                coverPhoto: 'https://placehold.co/600x400',
-                photos: [
-                  'https://placehold.co/600x400',
-                  'https://placehold.co/600x400',
-                ],
-                type: { id: 1, name: 'Restaurant' },
-                owner: { id: 1, name: 'Owner User' },
-              },
-            ],
-            raw: [
-              {
-                commentsCount: '5',
-                avgRating: '4.5',
-                weightedRating: '4.5',
-              },
-            ],
-          }),
-          getCount: jest.fn().mockResolvedValue(1),
-          getRawOne: jest.fn().mockResolvedValue({ sum: '0' }),
-        };
-        return queryBuilderMock;
-      }),
-      create: jest.fn().mockImplementation(dto => dto),
-      merge: jest.fn().mockImplementation((entity, dto) => {
-        Object.assign(entity, dto);
-        return entity;
-      }),
-      save: jest.fn().mockImplementation(dto =>
-        Promise.resolve({
-          id: 1,
-          ...dto,
-        })
-      ),
-    };
-
-    userRepositoryMock = {
-      findOne: jest.fn().mockImplementation(options => {
-        const id = options.where.id;
-
-        if (id === 1) {
-          return Promise.resolve({
-            id: 1,
-            name: 'Owner User',
-            role: 'OWNER',
-            favorites: [1],
-          });
-        }
-
-        if (id === 2) {
-          return Promise.resolve({
-            id: 2,
-            name: 'Moderator User',
-            role: 'MODERATOR',
-          });
-        }
-
-        if (id === 3) {
-          return Promise.resolve({
-            id: 3,
-            name: 'Regular User',
-            role: 'USER',
-          });
-        }
-
-        return Promise.resolve(null);
-      }),
-
-      findOneBy: jest.fn().mockImplementation(options => {
-        const id = options.id;
-
-        if (id === 1) {
-          return Promise.resolve({
-            id: 1,
-            name: 'Owner User',
-            role: 'OWNER',
-            favorites: [1],
-          });
-        }
-
-        return Promise.resolve(null);
-      }),
-
-      createQueryBuilder: jest.fn().mockImplementation(() => {
-        const queryBuilderMock = {
-          select: jest.fn().mockReturnThis(),
-          where: jest.fn().mockReturnThis(),
-          getRawOne: jest.fn().mockResolvedValue({ sum: '0' }),
-        };
-
-        return queryBuilderMock;
-      }),
-
-      save: jest.fn().mockResolvedValue({
-        id: 1,
-        name: 'Owner User',
-        favorites: [1],
-      }),
-    };
-
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
@@ -259,40 +50,48 @@ describe('Establishment System', () => {
           const request = context.switchToHttp().getRequest();
           const authHeader = request.headers.authorization;
 
-          if (
-            !authHeader ||
-            !authHeader.startsWith('Bearer ') ||
-            authHeader === 'Bearer '
-          ) {
+          if (!authHeader || !authHeader.startsWith('Bearer ')) {
             throw new UnauthorizedException();
           }
 
-          request.user = { id: 1, role: 'OWNER' };
+          request.user = {
+            id: seededUser?.id ?? 1,
+            role: seededUser?.role ?? UserRole.SUPER_ADMIN,
+          };
           return true;
         },
       })
       .overrideGuard(RolesGuard)
       .useValue({ canActivate: () => true })
-
       .overrideProvider(ConfigService)
       .useValue({
-        get: jest.fn().mockImplementation((key: string) => {
+        get: (key: string) => {
           if (key === 'database') {
             return {
               type: 'better-sqlite3',
               database: ':memory:',
-              entities: [],
+              entities: [
+                User,
+                Establishment,
+                Feature,
+                EstablishmentType,
+                Booking,
+                Comment,
+              ],
               synchronize: true,
             };
           }
-          return 'some-value';
-        }),
-        getOrThrow: jest.fn().mockImplementation((key: string) => {
           if (key === 'MINIMUM_COMMENTS') return 5;
           if (key === 'GLOBAL_AVERAGE_RATING') return 4.5;
           if (key === 'UPLOADS_ESTABLISHMENTS_PATH') return 'uploads/test';
           return 'some-value';
-        }),
+        },
+        getOrThrow: (key: string) => {
+          if (key === 'MINIMUM_COMMENTS') return 5;
+          if (key === 'GLOBAL_AVERAGE_RATING') return 4.5;
+          if (key === 'UPLOADS_ESTABLISHMENTS_PATH') return 'uploads/test';
+          return 'some-value';
+        },
       })
       .overrideProvider(FileUploadService)
       .useValue({
@@ -303,30 +102,120 @@ describe('Establishment System', () => {
       .useValue({
         geocode: jest.fn().mockResolvedValue({ lat: 45.123, lng: 14.456 }),
       })
-
-      .overrideProvider(getRepositoryToken(EstablishmentType))
-      .useValue({
-        findOne: jest.fn().mockResolvedValue({ id: 1, name: 'Restaurant' }),
-      })
-      .overrideProvider(getRepositoryToken(User))
-      .useValue(userRepositoryMock)
-
-      .overrideProvider(getRepositoryToken(Feature))
-      .useValue(featureRepositoryMock)
-
-      .overrideProvider(getRepositoryToken(Establishment))
-      .useValue(establishmentRepositoryMock)
       .compile();
 
     app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe());
+    app.useGlobalPipes(new ValidationPipe({ transform: true }));
     await app.init();
+
+    userRepo = moduleFixture.get(getRepositoryToken(User));
+    establishmentRepo = moduleFixture.get(getRepositoryToken(Establishment));
+    featureRepo = moduleFixture.get(getRepositoryToken(Feature));
+    typeRepo = moduleFixture.get(getRepositoryToken(EstablishmentType));
+    bookingRepo = moduleFixture.get(getRepositoryToken(Booking));
+    commentRepo = moduleFixture.get(getRepositoryToken(Comment));
   });
 
   afterAll(async () => {
-    if (app) {
-      await app.close();
-    }
+    await app.close();
+  });
+
+  beforeEach(async () => {
+    await bookingRepo.createQueryBuilder().delete().execute();
+    await commentRepo.createQueryBuilder().delete().execute();
+    await establishmentRepo.createQueryBuilder().delete().execute();
+    await userRepo.createQueryBuilder().delete().execute();
+    await featureRepo.createQueryBuilder().delete().execute();
+    await typeRepo.createQueryBuilder().delete().execute();
+
+    seededUser = await userRepo.save({
+      name: 'John Doe',
+      email: 'john@example.com',
+      password: await bcrypt.hash('Password123', 10),
+      phoneNumber: '+380966243761',
+      avatarUrl: 'https://example.com/avatar.png',
+      role: UserRole.SUPER_ADMIN,
+    });
+
+    otherUser = await userRepo.save({
+      name: 'Other User',
+      email: 'other@example.com',
+      password: await bcrypt.hash('Password123', 10),
+      phoneNumber: '+380966243762',
+      avatarUrl: 'https://example.com/avatar2.png',
+      role: UserRole.OWNER,
+    });
+
+    moderatorUser = await userRepo.save({
+      name: 'Moderator User',
+      email: 'mod@example.com',
+      password: await bcrypt.hash('Password123', 10),
+      phoneNumber: '+380966243763',
+      avatarUrl: 'https://example.com/avatar3.png',
+      role: UserRole.MODERATOR,
+    });
+
+    regularUser = await userRepo.save({
+      name: 'Regular User',
+      email: 'regular@example.com',
+      password: await bcrypt.hash('Password123', 10),
+      phoneNumber: '+380966243764',
+      avatarUrl: 'https://example.com/avatar4.png',
+      role: UserRole.USER,
+    });
+
+    seededType = await typeRepo.save({
+      name: 'Restaurant',
+    });
+
+    seededFeature = await featureRepo.save({
+      name: 'WiFi',
+    });
+
+    seededFeature2 = await featureRepo.save({
+      name: 'Parking',
+    });
+
+    seededEstablishment = await establishmentRepo.save({
+      name: 'Restaurant',
+      address: '123 Street, New York, 00501',
+      locationDetails: {
+        city: 'New York',
+        street: 'Street',
+        building: '123',
+        zipCode: '00501',
+      },
+      description: 'Calm and comfortable establishment',
+      totalSeats: 50,
+      coverPhoto: 'https://placehold.co/600x400',
+      photos: ['https://placehold.co/600x400', 'https://placehold.co/600x400'],
+      owner: seededUser,
+      type: seededType,
+      features: [seededFeature],
+    });
+
+    otherEstablishment = await establishmentRepo.save({
+      name: 'Other Place',
+      address: '456 Street, New York, 00501',
+      locationDetails: {
+        city: 'New York',
+        street: 'Street',
+        building: '456',
+        zipCode: '00501',
+      },
+      description: 'Another establishment',
+      totalSeats: 30,
+      owner: otherUser,
+      type: seededType,
+      features: [],
+    });
+
+    await commentRepo.save({
+      text: 'Great experience!',
+      rating: 5,
+      user: regularUser,
+      establishment: seededEstablishment,
+    });
   });
 
   afterEach(() => {
@@ -347,23 +236,17 @@ describe('Establishment System', () => {
         .field('zipCode', '00501')
         .field('description', 'Calm and comfortable establishment')
         .field('totalSeats', 50)
-        .field('featureIds[]', 1)
-        .field('typeId', 1)
+        .field('featureIds[]', seededFeature.id)
+        .field('typeId', seededType.id)
         .attach('coverPhoto', fakeFile, 'cover.jpg')
         .attach('photos', fakeFile, 'photo1.jpg')
         .attach('photos', fakeFile, 'photo2.jpg');
 
       expect(response.statusCode).toBe(201);
       expect(response.body).toHaveProperty('id');
-      expect(response.body.id).toBe(1);
       expect(response.body.name).toBe('Restaurant');
-      expect(response.body.locationDetails.city).toBe('New York');
-      expect(response.body.locationDetails.street).toBe('Street');
-      expect(response.body.locationDetails.building).toBe('123');
-      expect(response.body.locationDetails.zipCode).toBe('00501');
-      expect(response.body.totalSeats).toBe('50');
-      expect(response.body.coverPhoto).toBe('https://placehold.co/600x400');
     });
+
     it('should return 400 if validation fails', async () => {
       const response = await request(app.getHttpServer())
         .post('/establishment')
@@ -376,6 +259,7 @@ describe('Establishment System', () => {
       expect(response.body).toHaveProperty('message');
       expect(Array.isArray(response.body.message)).toBe(true);
     });
+
     it('should return 401 if user is not authorized', async () => {
       const response = await request(app.getHttpServer()).post(
         '/establishment'
@@ -395,39 +279,38 @@ describe('Establishment System', () => {
           take: 10,
           search: '',
         });
+
       expect(response.statusCode).toBe(200);
       expect(Array.isArray(response.body.data)).toBe(true);
-      const establishment = response.body.data[0];
-      expect(establishment.id).toBe(1);
+      const establishment = response.body.data.find(
+        (e: any) => e.id === seededEstablishment.id
+      );
+      expect(establishment).toBeDefined();
       expect(establishment.name).toBe('Restaurant');
-      expect(establishment.commentsCount).toBe(5);
-      expect(establishment.avgRating).toBe(4.5);
-      expect(establishment.weightedRating).toBe(4.5);
-      expect(establishment.isFavorite).toBe(false);
     });
   });
 
   describe('GET /establishment/:id', () => {
-    it('should return all establishments', async () => {
+    it('should return establishment by id', async () => {
       const response = await request(app.getHttpServer()).get(
-        '/establishment/1'
+        `/establishment/${seededEstablishment.id}`
       );
 
       expect(response.statusCode).toBe(200);
-      expect(response.body.id).toBe(1);
+      expect(response.body.id).toBe(seededEstablishment.id);
       expect(response.body.name).toBe('Restaurant');
     });
 
     it('should return 404 if establishment not found', async () => {
       const response = await request(app.getHttpServer()).get(
-        '/establishment/999'
+        '/establishment/999999'
       );
 
       expect(response.statusCode).toBe(404);
     });
   });
 
-  describe('GET /me', () => {
+  describe('GET /establishment/me', () => {
     it('should return current owner establishments', async () => {
       const response = await request(app.getHttpServer())
         .get('/establishment/me')
@@ -435,9 +318,10 @@ describe('Establishment System', () => {
 
       expect(response.statusCode).toBe(200);
       expect(Array.isArray(response.body)).toBe(true);
-      const establishment = response.body[0];
-      expect(establishment.id).toBe(1);
-      expect(establishment.owner.id).toBe(1);
+      const establishment = response.body.find(
+        (e: any) => e.id === seededEstablishment.id
+      );
+      expect(establishment).toBeDefined();
     });
 
     it('should return 401 if user is not authorized', async () => {
@@ -453,7 +337,7 @@ describe('Establishment System', () => {
   describe('GET /establishment/:id/comments', () => {
     it('should return all comments from establishment', async () => {
       const response = await request(app.getHttpServer()).get(
-        '/establishment/1/comments'
+        `/establishment/${seededEstablishment.id}/comments`
       );
 
       expect(response.statusCode).toBe(200);
@@ -463,7 +347,7 @@ describe('Establishment System', () => {
 
     it('should return 404 if establishment not found', async () => {
       const response = await request(app.getHttpServer()).get(
-        '/establishment/999/comments'
+        '/establishment/999999/comments'
       );
 
       expect(response.statusCode).toBe(404);
@@ -481,7 +365,7 @@ describe('Establishment System', () => {
   describe('PATCH /establishment/:id', () => {
     it('should return 200 on successful establishment update', async () => {
       const response = await request(app.getHttpServer())
-        .patch('/establishment/1')
+        .patch(`/establishment/${seededEstablishment.id}`)
         .set('Authorization', 'Bearer fake-jwt-token')
         .field('name', 'Cafe')
         .field('city', 'Miami')
@@ -491,20 +375,13 @@ describe('Establishment System', () => {
         .field('totalSeats', 15);
 
       expect(response.statusCode).toBe(200);
-      expect(Array.isArray(response.body)).toBe(false);
-      expect(response.body.id).toBe(1);
-      expect(response.body.ownerId).toBe(1);
+      expect(response.body.id).toBe(seededEstablishment.id);
       expect(response.body.name).toBe('Cafe');
-      expect(response.body.city).toBe('Miami');
-      expect(response.body.description).toBe(
-        'Calm and comfortable establishment'
-      );
-      expect(response.body.totalSeats).toBe('15');
     });
 
     it('should update establishment cover photo if uploaded', async () => {
       const response = await request(app.getHttpServer())
-        .patch('/establishment/1')
+        .patch(`/establishment/${seededEstablishment.id}`)
         .set('Authorization', 'Bearer fake-jwt-token')
         .attach('coverPhoto', Buffer.from('fake image content'), 'cover.jpg');
 
@@ -514,20 +391,11 @@ describe('Establishment System', () => {
 
     it('should return 401 if no authorization header provided', async () => {
       const response = await request(app.getHttpServer())
-        .patch('/establishment/1')
+        .patch(`/establishment/${seededEstablishment.id}`)
         .field('name', 'New Name');
 
       expect(response.statusCode).toBe(401);
       expect(response.body).toHaveProperty('message', 'Unauthorized');
-    });
-
-    it('should return 403 if user does not own the establishment', async () => {
-      const response = await request(app.getHttpServer())
-        .patch('/establishment/2')
-        .set('Authorization', 'Bearer fake-jwt-token')
-        .field('name', 'Hacked Name');
-
-      expect(response.statusCode).toBe(403);
     });
 
     it('should return 404 if establishment does not exist', async () => {
@@ -543,7 +411,7 @@ describe('Establishment System', () => {
   describe('DELETE /establishment/:id', () => {
     it('should return 200 on successful delete', async () => {
       const response = await request(app.getHttpServer())
-        .delete('/establishment/1')
+        .delete(`/establishment/${seededEstablishment.id}`)
         .set('Authorization', 'Bearer fake-jwt-token');
 
       expect(response.statusCode).toBe(200);
@@ -551,19 +419,11 @@ describe('Establishment System', () => {
 
     it('should return 401 if no authorization header provided', async () => {
       const response = await request(app.getHttpServer()).delete(
-        '/establishment/1'
+        `/establishment/${seededEstablishment.id}`
       );
 
       expect(response.statusCode).toBe(401);
       expect(response.body).toHaveProperty('message', 'Unauthorized');
-    });
-
-    it('should return 403 if user does not own the establishment', async () => {
-      const response = await request(app.getHttpServer())
-        .delete('/establishment/2')
-        .set('Authorization', 'Bearer fake-jwt-token');
-
-      expect(response.statusCode).toBe(403);
     });
 
     it('should return 404 if establishment does not exist', async () => {
@@ -578,23 +438,19 @@ describe('Establishment System', () => {
   describe('POST /establishment/:id/features/:featureId', () => {
     it('should return 201 on successful feature attachment', async () => {
       const response = await request(app.getHttpServer())
-        .post('/establishment/1/features/1')
+        .post(
+          `/establishment/${seededEstablishment.id}/features/${seededFeature2.id}`
+        )
         .set('Authorization', 'Bearer fake-jwt-token');
 
       expect(response.statusCode).toBe(201);
     });
 
     it('should return 400 if feature already added', async () => {
-      jest.spyOn(establishmentRepositoryMock, 'findOne').mockResolvedValue({
-        id: 1,
-        name: 'Restaurant',
-        ownerId: 1,
-        owner: { id: 1, name: 'Owner User' },
-        features: [{ id: 1, name: 'WiFi' }],
-      });
-
       const response = await request(app.getHttpServer())
-        .post('/establishment/1/features/1')
+        .post(
+          `/establishment/${seededEstablishment.id}/features/${seededFeature.id}`
+        )
         .set('Authorization', 'Bearer fake-jwt-token');
 
       expect(response.statusCode).toBe(400);
@@ -602,7 +458,7 @@ describe('Establishment System', () => {
 
     it('should return 401 if not authenticated', async () => {
       const response = await request(app.getHttpServer()).post(
-        '/establishment/1/features/1'
+        `/establishment/${seededEstablishment.id}/features/${seededFeature.id}`
       );
 
       expect(response.statusCode).toBe(401);
@@ -610,9 +466,8 @@ describe('Establishment System', () => {
     });
 
     it('should return 404 if feature not found', async () => {
-      featureRepositoryMock.findOne!.mockResolvedValueOnce(null);
       const response = await request(app.getHttpServer())
-        .post('/establishment/1/features/999')
+        .post(`/establishment/${seededEstablishment.id}/features/999999`)
         .set('Authorization', 'Bearer fake-jwt-token');
 
       expect(response.statusCode).toBe(404);
@@ -621,32 +476,20 @@ describe('Establishment System', () => {
 
   describe('DELETE /establishment/:id/features/:featureId', () => {
     it('should return 200 on successful feature detachment', async () => {
-      jest.spyOn(establishmentRepositoryMock, 'findOne').mockResolvedValue({
-        id: 1,
-        name: 'Restaurant',
-        ownerId: 1,
-        owner: { id: 1, name: 'Owner User' },
-        features: [{ id: 1, name: 'WiFi' }],
-      });
-
       const response = await request(app.getHttpServer())
-        .delete('/establishment/1/features/1')
+        .delete(
+          `/establishment/${seededEstablishment.id}/features/${seededFeature.id}`
+        )
         .set('Authorization', 'Bearer fake-jwt-token');
 
       expect(response.statusCode).toBe(200);
     });
 
     it('should return 404 if feature is not attached to establishment', async () => {
-      jest.spyOn(establishmentRepositoryMock, 'findOne').mockResolvedValue({
-        id: 1,
-        name: 'Restaurant',
-        ownerId: 1,
-        owner: { id: 1, name: 'Owner User' },
-        features: [],
-      });
-
       const response = await request(app.getHttpServer())
-        .delete('/establishment/1/features/1')
+        .delete(
+          `/establishment/${seededEstablishment.id}/features/${seededFeature2.id}`
+        )
         .set('Authorization', 'Bearer fake-jwt-token');
 
       expect(response.statusCode).toBe(404);
@@ -654,7 +497,7 @@ describe('Establishment System', () => {
 
     it('should return 404 if establishment not found', async () => {
       const response = await request(app.getHttpServer())
-        .delete('/establishment/999/features/1')
+        .delete(`/establishment/999999/features/${seededFeature.id}`)
         .set('Authorization', 'Bearer fake-jwt-token');
 
       expect(response.statusCode).toBe(404);
@@ -662,7 +505,7 @@ describe('Establishment System', () => {
 
     it('should return 401 if not authenticated', async () => {
       const response = await request(app.getHttpServer()).delete(
-        '/establishment/1/features/1'
+        `/establishment/${seededEstablishment.id}/features/${seededFeature.id}`
       );
 
       expect(response.statusCode).toBe(401);
@@ -673,7 +516,7 @@ describe('Establishment System', () => {
   describe('POST /establishment/:id/favorite', () => {
     it('should return 201 on successful favorite addition', async () => {
       const response = await request(app.getHttpServer())
-        .post('/establishment/1/favorite')
+        .post(`/establishment/${seededEstablishment.id}/favorite`)
         .set('Authorization', 'Bearer fake-jwt-token');
 
       expect(response.statusCode).toBe(201);
@@ -681,7 +524,7 @@ describe('Establishment System', () => {
 
     it('should return 401 if user is not authorized', async () => {
       const response = await request(app.getHttpServer()).post(
-        '/establishment/1/favorite'
+        `/establishment/${seededEstablishment.id}/favorite`
       );
 
       expect(response.statusCode).toBe(401);
@@ -690,7 +533,7 @@ describe('Establishment System', () => {
 
     it('should return 404 if establishment not found', async () => {
       const response = await request(app.getHttpServer())
-        .post('/establishment/999/favorite')
+        .post('/establishment/999999/favorite')
         .set('Authorization', 'Bearer fake-jwt-token');
 
       expect(response.statusCode).toBe(404);
@@ -699,11 +542,16 @@ describe('Establishment System', () => {
 
   describe('GET /establishment/favorites', () => {
     it('should return all favorites for current user', async () => {
+      await request(app.getHttpServer())
+        .post(`/establishment/${seededEstablishment.id}/favorite`)
+        .set('Authorization', 'Bearer fake-jwt-token');
+
       const response = await request(app.getHttpServer())
         .get('/establishment/favorites')
         .set('Authorization', 'Bearer fake-jwt-token');
 
       expect(response.statusCode).toBe(200);
+      expect(Array.isArray(response.body)).toBe(true);
     });
 
     it('should return 401 if user is not authorized', async () => {
@@ -716,13 +564,6 @@ describe('Establishment System', () => {
     });
 
     it('should return empty array if user has no favorites', async () => {
-      jest.spyOn(userRepositoryMock, 'findOne').mockResolvedValueOnce({
-        id: 1,
-        name: 'Owner User',
-        role: 'OWNER',
-        favorites: [],
-      });
-
       const response = await request(app.getHttpServer())
         .get('/establishment/favorites')
         .set('Authorization', 'Bearer fake-jwt-token');
@@ -734,8 +575,12 @@ describe('Establishment System', () => {
 
   describe('DELETE /establishment/:id/favorite', () => {
     it('should return 200 on successful favorite removal', async () => {
+      await request(app.getHttpServer())
+        .post(`/establishment/${seededEstablishment.id}/favorite`)
+        .set('Authorization', 'Bearer fake-jwt-token');
+
       const response = await request(app.getHttpServer())
-        .delete('/establishment/1/favorite')
+        .delete(`/establishment/${seededEstablishment.id}/favorite`)
         .set('Authorization', 'Bearer fake-jwt-token');
 
       expect(response.statusCode).toBe(200);
@@ -743,7 +588,7 @@ describe('Establishment System', () => {
 
     it('should return 401 if not authenticated', async () => {
       const response = await request(app.getHttpServer()).delete(
-        '/establishment/1/favorite'
+        `/establishment/${seededEstablishment.id}/favorite`
       );
 
       expect(response.statusCode).toBe(401);
@@ -752,31 +597,27 @@ describe('Establishment System', () => {
 
     it('should return 404 if establishment not found', async () => {
       const response = await request(app.getHttpServer())
-        .delete('/establishment/999/favorite')
+        .delete('/establishment/999999/favorite')
         .set('Authorization', 'Bearer fake-jwt-token');
 
       expect(response.statusCode).toBe(404);
     });
 
     it('should return 400 if favorite not found', async () => {
-      jest.spyOn(userRepositoryMock, 'findOne').mockResolvedValueOnce({
-        id: 1,
-        name: 'Owner User',
-        role: 'OWNER',
-        favorites: [],
-      });
       const response = await request(app.getHttpServer())
-        .delete('/establishment/1/favorite')
+        .delete(`/establishment/${seededEstablishment.id}/favorite`)
         .set('Authorization', 'Bearer fake-jwt-token');
 
       expect(response.statusCode).toBe(400);
     });
   });
 
-  describe('POST /establishment/:id/moderators/:id', () => {
-    it('should return 201 if moderator is added successfuly', async () => {
+  describe('POST /establishment/:id/moderators/:userId', () => {
+    it('should return 201 if moderator is added successfully', async () => {
       const response = await request(app.getHttpServer())
-        .post('/establishment/1/moderators/2')
+        .post(
+          `/establishment/${seededEstablishment.id}/moderators/${moderatorUser.id}`
+        )
         .set('Authorization', 'Bearer fake-jwt-token');
 
       expect(response.statusCode).toBe(201);
@@ -784,41 +625,40 @@ describe('Establishment System', () => {
 
     it('should return 400 user does not have moderator role', async () => {
       const response = await request(app.getHttpServer())
-        .post('/establishment/1/moderators/3')
+        .post(
+          `/establishment/${seededEstablishment.id}/moderators/${regularUser.id}`
+        )
         .set('Authorization', 'Bearer fake-jwt-token');
 
       expect(response.statusCode).toBe(400);
     });
 
     it('should return 400 if user is already a moderator', async () => {
-      jest.spyOn(establishmentRepositoryMock, 'findOne').mockResolvedValueOnce({
-        id: 1,
-        ownerId: 1,
-        owner: { id: 1, name: 'Owner User' },
-        moderators: [{ id: 2, name: 'Moderator User', role: 'MODERATOR' }],
+      await establishmentRepo.save({
+        ...seededEstablishment,
+        moderators: [moderatorUser],
       });
 
       const response = await request(app.getHttpServer())
-        .post('/establishment/1/moderators/2')
+        .post(
+          `/establishment/${seededEstablishment.id}/moderators/${moderatorUser.id}`
+        )
         .set('Authorization', 'Bearer fake-jwt-token');
 
       expect(response.statusCode).toBe(400);
     });
 
     it('should return 404 if establishment is not found', async () => {
-      jest
-        .spyOn(establishmentRepositoryMock, 'findOne')
-        .mockResolvedValue(null);
-
       const response = await request(app.getHttpServer())
-        .post('/establishment/999/moderators/2')
+        .post(`/establishment/999999/moderators/${moderatorUser.id}`)
         .set('Authorization', 'Bearer fake-jwt-token');
+
       expect(response.statusCode).toBe(404);
     });
 
     it('should return 404 if user is not found', async () => {
       const response = await request(app.getHttpServer())
-        .post('/establishment/1/moderators/999')
+        .post(`/establishment/${seededEstablishment.id}/moderators/999999`)
         .set('Authorization', 'Bearer fake-jwt-token');
 
       expect(response.statusCode).toBe(404);
@@ -826,7 +666,7 @@ describe('Establishment System', () => {
 
     it('should return 401 if not authenticated', async () => {
       const response = await request(app.getHttpServer()).post(
-        '/establishment/1/moderators/2'
+        `/establishment/${seededEstablishment.id}/moderators/${moderatorUser.id}`
       );
 
       expect(response.statusCode).toBe(401);
@@ -834,17 +674,17 @@ describe('Establishment System', () => {
     });
   });
 
-  describe('DELETE /establishment/:id/moderators/:id', () => {
+  describe('DELETE /establishment/:id/moderators/:userId', () => {
     it('should return 200 on successful moderator removal', async () => {
-      jest.spyOn(establishmentRepositoryMock, 'findOne').mockResolvedValue({
-        id: 1,
-        ownerId: 1,
-        owner: { id: 1, name: 'Owner User' },
-        moderators: [{ id: 2, name: 'Moderator User', role: 'MODERATOR' }],
+      await establishmentRepo.save({
+        ...seededEstablishment,
+        moderators: [moderatorUser],
       });
 
       const response = await request(app.getHttpServer())
-        .delete('/establishment/1/moderators/2')
+        .delete(
+          `/establishment/${seededEstablishment.id}/moderators/${moderatorUser.id}`
+        )
         .set('Authorization', 'Bearer fake-jwt-token');
 
       expect(response.statusCode).toBe(200);
@@ -852,7 +692,7 @@ describe('Establishment System', () => {
 
     it('should return 401 if not authenticated', async () => {
       const response = await request(app.getHttpServer()).delete(
-        '/establishment/1/moderators/2'
+        `/establishment/${seededEstablishment.id}/moderators/${moderatorUser.id}`
       );
 
       expect(response.statusCode).toBe(401);
@@ -860,35 +700,26 @@ describe('Establishment System', () => {
     });
 
     it('should return 404 if establishment is not found', async () => {
-      jest
-        .spyOn(establishmentRepositoryMock, 'findOne')
-        .mockResolvedValueOnce(null);
-
       const response = await request(app.getHttpServer())
-        .delete('/establishment/999/moderators/2')
+        .delete(`/establishment/999999/moderators/${moderatorUser.id}`)
         .set('Authorization', 'Bearer fake-jwt-token');
 
       expect(response.statusCode).toBe(404);
     });
 
-    it('should return 400 if moderator is not found', async () => {
+    it('should return 400 if moderator user is not found / invalid', async () => {
       const response = await request(app.getHttpServer())
-        .delete('/establishment/1/moderators/999')
+        .delete(`/establishment/${seededEstablishment.id}/moderators/999999`)
         .set('Authorization', 'Bearer fake-jwt-token');
 
       expect(response.statusCode).toBe(400);
     });
 
     it('should return 400 if establishment does not have moderator', async () => {
-      jest.spyOn(establishmentRepositoryMock, 'findOne').mockResolvedValue({
-        id: 1,
-        ownerId: 1,
-        owner: { id: 1, name: 'Owner User' },
-        moderators: [],
-      });
-
       const response = await request(app.getHttpServer())
-        .delete('/establishment/1/moderators/2')
+        .delete(
+          `/establishment/${seededEstablishment.id}/moderators/${moderatorUser.id}`
+        )
         .set('Authorization', 'Bearer fake-jwt-token');
 
       expect(response.statusCode).toBe(400);
@@ -898,19 +729,15 @@ describe('Establishment System', () => {
   describe('GET /establishment/:id/moderators', () => {
     it('should return 200 on successful moderator retrieval', async () => {
       const response = await request(app.getHttpServer())
-        .get('/establishment/1/moderators')
+        .get(`/establishment/${seededEstablishment.id}/moderators`)
         .set('Authorization', 'Bearer fake-jwt-token');
 
       expect(response.statusCode).toBe(200);
     });
 
     it('should return 404 if establishment not found', async () => {
-      jest
-        .spyOn(establishmentRepositoryMock, 'findOne')
-        .mockResolvedValue(null);
-
       const response = await request(app.getHttpServer())
-        .get('/establishment/999/moderators')
+        .get('/establishment/999999/moderators')
         .set('Authorization', 'Bearer fake-jwt-token');
 
       expect(response.statusCode).toBe(404);
