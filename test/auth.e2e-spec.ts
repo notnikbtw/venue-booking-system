@@ -21,7 +21,7 @@ describe('Auth', () => {
   let userRepo: Repository<User>;
   let refreshTokenRepo: Repository<RefreshToken>;
   let bookingRepo: Repository<Booking>;
-  let seededUser: User | undefined;
+  let seededUser: User;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -51,7 +51,7 @@ describe('Auth', () => {
             return {
               type: 'better-sqlite3',
               database: ':memory:',
-              entities: [User, RefreshToken, Booking],
+              entities: [User, RefreshToken, Booking, Comment],
               synchronize: true,
             };
           }

@@ -24,9 +24,9 @@ describe('Booking System', () => {
   let userRepo: Repository<User>;
   let bookingRepo: Repository<Booking>;
   let establishmentRepo: Repository<Establishment>;
-  let seededUser: User | undefined;
-  let seededBooking: Booking | undefined;
-  let seededEstablishment: Establishment | undefined;
+  let seededUser: User;
+  let seededBooking: Booking;
+  let seededEstablishment: Establishment;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({

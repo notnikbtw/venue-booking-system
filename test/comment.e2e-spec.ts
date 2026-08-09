@@ -1,4 +1,5 @@
 import { JwtAuthGuard } from '@common/guard/jwt-auth.guard';
+import { Booking } from '@modules/booking/entities/booking.entity';
 import { Comment } from '@modules/comment/entities/comment.entity';
 import { Establishment } from '@modules/establishment/entities/establishment.entity';
 import { User, UserRole } from '@modules/users/entities/user.entity';
@@ -10,12 +11,21 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import * as bcrypt from 'bcrypt';
 import request from 'supertest';
+import { Repository } from 'typeorm';
 
 import { AppModule } from '@/app.module';
 
 describe('Comment system', () => {
   let app: INestApplication;
+  let commentRepo: Repository<Comment>;
+  let userRepo: Repository<User>;
+  let establishmentRepo: Repository<Establishment>;
+  let bookingRepo: Repository<Booking>;
+  let seededUser: User;
+  let seededEstablishment: Establishment;
+  let seededComment: Comment;
 
   beforeAll(async () => {
     const moduleFixture = await Test.createTestingModule({
@@ -35,7 +45,10 @@ describe('Comment system', () => {
             throw new UnauthorizedException();
           }
 
-          request.user = { id: 1, role: UserRole.OWNER };
+          request.user = {
+            id: seededUser?.id ?? 1,
+            role: seededUser?.role ?? UserRole.SUPER_ADMIN,
+          };
           return true;
         },
       })
@@ -56,132 +69,60 @@ describe('Comment system', () => {
           return 'some-value';
         }),
       })
-      .overrideProvider(getRepositoryToken(Comment))
-      .useValue({
-        findOne: jest.fn().mockImplementation(options => {
-          const id = options?.id ?? options?.where?.id;
-
-          if (id === 1) {
-            return Promise.resolve({
-              id: 1,
-              text: 'Great experience!',
-              rating: 4,
-              createdAt: new Date('2026-07-20T10:00:00.000Z'),
-              user: { id: 1, name: 'User1' },
-              establishment: { id: 1, ownerId: 1 },
-            });
-          }
-        }),
-        create: jest.fn().mockImplementation(dto => dto),
-        merge: jest.fn().mockImplementation((entity, dto) => {
-          Object.assign(entity, dto);
-          return entity;
-        }),
-        save: jest.fn().mockImplementation(dto => Promise.resolve(dto)),
-        delete: jest.fn().mockResolvedValue({ affected: 1 }),
-        createQueryBuilder: jest.fn().mockReturnValue({
-          leftJoinAndSelect: jest.fn().mockReturnThis(),
-          where: jest.fn().mockReturnThis(),
-          orderBy: jest.fn().mockReturnThis(),
-          skip: jest.fn().mockReturnThis(),
-          take: jest.fn().mockReturnThis(),
-          getCount: jest.fn().mockResolvedValue(1),
-          getRawAndEntities: jest.fn().mockResolvedValue({
-            entities: [
-              {
-                id: 1,
-                text: 'Great experience!',
-                rating: 5,
-                createdAt: '2026-07-20T10:00:00.000Z',
-                user: { id: 1, name: 'User' },
-              },
-            ],
-            raw: [],
-          }),
-        }),
-      })
-      .overrideProvider(getRepositoryToken(Establishment))
-      .useValue({
-        findOneBy: jest.fn().mockImplementation(options => {
-          const id = options?.id ?? options?.where?.id;
-
-          if (id === 1) {
-            return Promise.resolve({
-              id: 1,
-              name: 'Restaurant',
-              address: 'New York, Street 123',
-              ownerId: 2,
-              owner: {
-                name: 'User2',
-                id: 2,
-              },
-              comments: [],
-            });
-          }
-        }),
-        findOne: jest.fn().mockImplementation(options => {
-          const id = options?.where?.id ?? options?.id;
-
-          if (id === 1) {
-            return Promise.resolve({
-              id: 1,
-              name: 'Restaurant',
-              address: 'New York, Street 123',
-              ownerId: 2,
-              owner: {
-                name: 'User2',
-                id: 2,
-              },
-              comments: [],
-            });
-          }
-        }),
-        save: jest.fn().mockImplementation(dto =>
-          Promise.resolve({
-            id: 1,
-            ...dto,
-          })
-        ),
-      })
-      .overrideProvider(getRepositoryToken(User))
-      .useValue({
-        findOneBy: jest.fn().mockImplementation(options => {
-          const id = options?.id ?? options?.where?.id;
-
-          if (id === 1) {
-            return Promise.resolve({
-              id: 1,
-              name: 'User',
-              role: UserRole.USER,
-              favorites: [1],
-            });
-          }
-
-          if (id === 2) {
-            return Promise.resolve({
-              id: 2,
-              name: 'User2',
-              role: UserRole.OWNER,
-              favorites: [1],
-            });
-          }
-        }),
-      })
       .compile();
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
+
+    commentRepo = moduleFixture.get(getRepositoryToken(Comment));
+    userRepo = moduleFixture.get(getRepositoryToken(User));
+    establishmentRepo = moduleFixture.get(getRepositoryToken(Establishment));
+    bookingRepo = moduleFixture.get(getRepositoryToken(Booking));
   });
 
   afterAll(async () => {
-    if (app) {
-      await app.close();
-    }
+    await app.close();
   });
 
-  afterEach(() => {
-    jest.restoreAllMocks();
+  beforeEach(async () => {
+    await bookingRepo.createQueryBuilder().delete().execute();
+    await commentRepo.createQueryBuilder().delete().execute();
+    await establishmentRepo.createQueryBuilder().delete().execute();
+    await userRepo.createQueryBuilder().delete().execute();
+
+    seededUser = await userRepo.save({
+      name: 'John Doe',
+      email: 'john@example.com',
+      password: await bcrypt.hash('Password123', 10),
+      phoneNumber: '+380966243761',
+      avatarUrl: 'https://example.com/avatar.png',
+      role: UserRole.SUPER_ADMIN,
+    });
+
+    seededEstablishment = await establishmentRepo.save({
+      name: 'Restaurant',
+      address: '123 Main St',
+      description: 'A nice restaurant',
+      totalSeats: 50,
+      owner: seededUser,
+    });
+
+    const commentAuthor = await userRepo.save({
+      name: 'Jane Doe',
+      email: 'jane@example.com',
+      password: await bcrypt.hash('Password123', 10),
+      phoneNumber: '+380966243762',
+      avatarUrl: 'https://example.com/avatar2.png',
+      role: UserRole.USER,
+    });
+
+    seededComment = await commentRepo.save({
+      text: 'Comment',
+      rating: 4,
+      user: commentAuthor,
+      establishment: seededEstablishment,
+    });
   });
 
   describe('POST /comment', () => {
@@ -192,7 +133,7 @@ describe('Comment system', () => {
         .send({
           text: 'Comment',
           rating: 4,
-          establishmentId: 1,
+          establishmentId: seededEstablishment.id,
         });
 
       expect(response.statusCode).toBe(201);
@@ -218,7 +159,7 @@ describe('Comment system', () => {
         .send({
           text: 'Comment',
           rating: 4,
-          establishmentId: 1,
+          establishmentId: seededEstablishment.id,
         });
 
       expect(response.statusCode).toBe(401);
@@ -232,7 +173,7 @@ describe('Comment system', () => {
         .send({
           text: 'Comment',
           rating: 6,
-          establishmentId: 1,
+          establishmentId: seededEstablishment.id,
         });
 
       expect(response.statusCode).toBe(400);
@@ -245,7 +186,7 @@ describe('Comment system', () => {
   describe('GET /comment/establishment/:id', () => {
     it('should return 200 on successful get comments', async () => {
       const response = await request(app.getHttpServer()).get(
-        '/comment/establishment/1'
+        `/comment/establishment/${seededEstablishment.id}`
       );
 
       expect(response.statusCode).toBe(200);
@@ -264,7 +205,7 @@ describe('Comment system', () => {
   describe('PATCH /comment/:id', () => {
     it('should retutn 200 on successful edit comment', async () => {
       const response = await request(app.getHttpServer())
-        .patch('/comment/1')
+        .patch(`/comment/${seededComment.id}`)
         .set('Authorization', 'Bearer fake-jwt-token')
         .send({
           text: 'Edited comment',
@@ -276,7 +217,7 @@ describe('Comment system', () => {
 
     it('shoult return 401 if user is not authenticated', async () => {
       const response = await request(app.getHttpServer())
-        .patch('/comment/1')
+        .patch(`/comment/${seededComment.id}`)
         .send({
           text: 'Edited comment',
           rating: 5,
@@ -303,14 +244,16 @@ describe('Comment system', () => {
   describe('DELETE /comment/:id', () => {
     it('should return 200 on successful delete comment', async () => {
       const response = await request(app.getHttpServer())
-        .delete('/comment/1')
+        .delete(`/comment/${seededComment.id}`)
         .set('Authorization', 'Bearer fake-jwt-token');
 
       expect(response.statusCode).toBe(200);
     });
 
     it('should return 401 if user is not authenticated', async () => {
-      const response = await request(app.getHttpServer()).delete('/comment/1');
+      const response = await request(app.getHttpServer()).delete(
+        `/comment/${seededComment.id}`
+      );
 
       expect(response.statusCode).toBe(401);
       expect(response.body.message).toBe('Unauthorized');
