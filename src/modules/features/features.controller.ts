@@ -2,6 +2,7 @@ import { FeatureUploadInterceptor } from '@common/interceptor/feature-upload.int
 import { CreateFeatureDto } from '@modules/features/dto/create-feature.dto';
 import { UpdateFeatureDto } from '@modules/features/dto/update-feature.dto';
 import { FeaturesService } from '@modules/features/features.service';
+import { UserRole } from '@modules/users/entities/user.entity';
 import {
   Controller,
   Get,
@@ -12,6 +13,7 @@ import {
   Delete,
   UseInterceptors,
   UploadedFile,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiConsumes,
@@ -23,12 +25,17 @@ import {
   ApiNotFoundResponse,
 } from '@nestjs/swagger';
 
+import { Roles } from '@/common/decorator/roles.decorator';
+import { JwtAuthGuard } from '@/common/guard/jwt-auth.guard';
+
 @ApiTags('features')
 @Controller('features')
 export class FeaturesController {
   constructor(private readonly featuresService: FeaturesService) {}
 
   @Post()
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.SUPER_ADMIN)
   @UseInterceptors(FeatureUploadInterceptor)
   @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Create a new feature with optional image' })
