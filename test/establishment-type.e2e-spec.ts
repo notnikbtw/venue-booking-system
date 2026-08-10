@@ -1,7 +1,7 @@
 import { JwtAuthGuard } from '@common/guard/jwt-auth.guard';
 import { Booking } from '@modules/booking/entities/booking.entity';
-import { Comment } from '@modules/comment/entities/comment.entity';
 import { Establishment } from '@modules/establishment/entities/establishment.entity';
+import { EstablishmentType } from '@modules/establishment-type/entities/establishment-type.entity';
 import { User, UserRole } from '@modules/users/entities/user.entity';
 import {
   INestApplication,
@@ -9,7 +9,7 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Test } from '@nestjs/testing';
+import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import request from 'supertest';
@@ -17,31 +17,32 @@ import { Repository } from 'typeorm';
 
 import { AppModule } from '@/app.module';
 
-describe('Comment system', () => {
+describe('Establishment Type', () => {
   let app: INestApplication;
-  let commentRepo: Repository<Comment>;
-  let userRepo: Repository<User>;
   let establishmentRepo: Repository<Establishment>;
+  let establishmentTypeRepo: Repository<EstablishmentType>;
+  let userRepo: Repository<User>;
   let bookingRepo: Repository<Booking>;
+
   let seededUser: User;
   let seededEstablishment: Establishment;
-  let seededComment: Comment;
+  let seededEstablishmentType: EstablishmentType;
 
   beforeAll(async () => {
-    const moduleFixture = await Test.createTestingModule({
+    const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
       .overrideGuard(JwtAuthGuard)
       .useValue({
         canActivate: context => {
-          const request = context.switchToHttp().getRequest();
-          const authHeader = request.headers.authorization;
+          const req = context.switchToHttp().getRequest();
+          const authHeader = req.headers.authorization;
 
           if (!authHeader || !authHeader.startsWith('Bearer ')) {
             throw new UnauthorizedException();
           }
 
-          request.user = {
+          req.user = {
             id: seededUser?.id ?? 1,
             role: seededUser?.role ?? UserRole.SUPER_ADMIN,
           };
@@ -55,7 +56,7 @@ describe('Comment system', () => {
             return {
               type: 'better-sqlite3',
               database: ':memory:',
-              entities: [User, Booking, Comment, Establishment],
+              entities: [User, Booking, Establishment],
               synchronize: true,
             };
           }
@@ -69,10 +70,12 @@ describe('Comment system', () => {
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
 
-    commentRepo = moduleFixture.get(getRepositoryToken(Comment));
     userRepo = moduleFixture.get(getRepositoryToken(User));
     establishmentRepo = moduleFixture.get(getRepositoryToken(Establishment));
     bookingRepo = moduleFixture.get(getRepositoryToken(Booking));
+    establishmentTypeRepo = moduleFixture.get(
+      getRepositoryToken(EstablishmentType)
+    );
   });
 
   afterAll(async () => {
@@ -81,8 +84,8 @@ describe('Comment system', () => {
 
   beforeEach(async () => {
     await bookingRepo.createQueryBuilder().delete().execute();
-    await commentRepo.createQueryBuilder().delete().execute();
     await establishmentRepo.createQueryBuilder().delete().execute();
+    await establishmentTypeRepo.createQueryBuilder().delete().execute();
     await userRepo.createQueryBuilder().delete().execute();
 
     seededUser = await userRepo.save({
@@ -94,172 +97,153 @@ describe('Comment system', () => {
       role: UserRole.SUPER_ADMIN,
     });
 
-    seededEstablishment = await establishmentRepo.save({
+    seededEstablishmentType = await establishmentTypeRepo.save({
       name: 'Restaurant',
-      address: '123 Main St',
       description: 'A nice restaurant',
-      totalSeats: 50,
-      owner: seededUser,
-    });
-
-    const commentAuthor = await userRepo.save({
-      name: 'Jane Doe',
-      email: 'jane@example.com',
-      password: await bcrypt.hash('Password123', 10),
-      phoneNumber: '+380966243762',
-      avatarUrl: 'https://example.com/avatar2.png',
-      role: UserRole.USER,
-    });
-
-    seededComment = await commentRepo.save({
-      text: 'Comment',
-      rating: 4,
-      user: commentAuthor,
-      establishment: seededEstablishment,
     });
   });
 
-  describe('POST /comment', () => {
-    it('should return 201 on successful create comment', async () => {
+  describe('POST /establishment-type', () => {
+    it('should create establishment type', async () => {
       const response = await request(app.getHttpServer())
-        .post('/comment')
+        .post('/establishment-type')
         .set('Authorization', 'Bearer fake-jwt-token')
         .send({
-          text: 'Comment',
-          rating: 4,
-          establishmentId: seededEstablishment.id,
+          name: 'Restaurant',
+          description: 'Restaurant',
         });
 
       expect(response.statusCode).toBe(201);
     });
 
-    it('should return 404 when establishment not found', async () => {
+    it('should return 401 if not authenticated', async () => {
       const response = await request(app.getHttpServer())
-        .post('/comment')
-        .set('Authorization', 'Bearer fake-jwt-token')
+        .post('/establishment-type')
         .send({
-          text: 'Comment',
-          rating: 4,
-          establishmentId: 999,
-        });
-
-      expect(response.statusCode).toBe(404);
-      expect(response.body.message).toBe('Establishment 999 not found');
-    });
-
-    it('should return 401 if user is not authenticated', async () => {
-      const response = await request(app.getHttpServer())
-        .post('/comment')
-        .send({
-          text: 'Comment',
-          rating: 4,
-          establishmentId: seededEstablishment.id,
+          name: 'Restaurant',
+          description: 'A nice restaurant',
         });
 
       expect(response.statusCode).toBe(401);
-      expect(response.body.message).toBe('Unauthorized');
+    });
+  });
+
+  describe('GET /establishment-type', () => {
+    it('should return 200 and get all establishment types', async () => {
+      const response = await request(app.getHttpServer()).get(
+        '/establishment-type'
+      );
+
+      expect(response.statusCode).toBe(200);
+    });
+  });
+
+  describe('GET /establishment-type/:id', () => {
+    it('should return 200 and get establishment type by id', async () => {
+      const response = await request(app.getHttpServer()).get(
+        `/establishment-type/${seededEstablishmentType.id}`
+      );
+
+      expect(response.statusCode).toBe(200);
     });
 
-    it('should return 400 if rating is not in range', async () => {
+    it('should return 404 if establishment type not found', async () => {
+      const response = await request(app.getHttpServer()).get(
+        `/establishment-type/${seededEstablishmentType.id + 1}`
+      );
+
+      expect(response.statusCode).toBe(404);
+    });
+
+    it('should return 400 if id is not valid', async () => {
+      const response = await request(app.getHttpServer()).get(
+        `/establishment-type/invalid-id`
+      );
+
+      expect(response.statusCode).toBe(400);
+    });
+  });
+
+  describe('PATCH /establishment-type/:id', () => {
+    it('should return 200 and update establishment type', async () => {
       const response = await request(app.getHttpServer())
-        .post('/comment')
+        .patch(`/establishment-type/${seededEstablishmentType.id}`)
         .set('Authorization', 'Bearer fake-jwt-token')
         .send({
-          text: 'Comment',
-          rating: 6,
-          establishmentId: seededEstablishment.id,
+          name: 'Updated Restaurant',
+          description: 'Updated description',
+        });
+
+      expect(response.statusCode).toBe(200);
+    });
+
+    it('should return 401 if not authenticated', async () => {
+      const response = await request(app.getHttpServer())
+        .patch(`/establishment-type/${seededEstablishmentType.id}`)
+        .send({
+          name: 'Updated Restaurant',
+          description: 'Updated description',
+        });
+
+      expect(response.statusCode).toBe(401);
+    });
+
+    it('should return 404 if establishment type not found', async () => {
+      const response = await request(app.getHttpServer())
+        .patch(`/establishment-type/999999`)
+        .set('Authorization', 'Bearer fake-jwt-token')
+        .send({
+          name: 'Updated Restaurant',
+          description: 'Updated description',
+        });
+
+      expect(response.statusCode).toBe(404);
+    });
+
+    it('should return 400 if id is not valid', async () => {
+      const response = await request(app.getHttpServer())
+        .patch(`/establishment-type/invalid-id`)
+        .set('Authorization', 'Bearer fake-jwt-token')
+        .send({
+          name: 'Updated Restaurant',
+          description: 'Updated description',
         });
 
       expect(response.statusCode).toBe(400);
-      expect(response.body.message).toEqual([
-        'rating must not be greater than 5',
-      ]);
     });
   });
 
-  describe('GET /comment/establishment/:id', () => {
-    it('should return 200 on successful get comments', async () => {
-      const response = await request(app.getHttpServer()).get(
-        `/comment/establishment/${seededEstablishment.id}`
-      );
-
-      expect(response.statusCode).toBe(200);
-    });
-
-    it('should return 404 when establishment not found', async () => {
-      const response = await request(app.getHttpServer()).get(
-        '/comment/establishment/999'
-      );
-
-      expect(response.statusCode).toBe(404);
-      expect(response.body.message).toBe('Establishment 999 not found');
-    });
-  });
-
-  describe('PATCH /comment/:id', () => {
-    it('should return 200 on successful edit comment', async () => {
+  describe('DELETE /establishment-type/:id', () => {
+    it('should return 200 and delete establishment type', async () => {
       const response = await request(app.getHttpServer())
-        .patch(`/comment/${seededComment.id}`)
-        .set('Authorization', 'Bearer fake-jwt-token')
-        .send({
-          text: 'Edited comment',
-          rating: 5,
-        });
-
-      expect(response.statusCode).toBe(200);
-    });
-
-    it('should return 401 if user is not authenticated', async () => {
-      const response = await request(app.getHttpServer())
-        .patch(`/comment/${seededComment.id}`)
-        .send({
-          text: 'Edited comment',
-          rating: 5,
-        });
-
-      expect(response.statusCode).toBe(401);
-      expect(response.body.message).toBe('Unauthorized');
-    });
-
-    it('should return 404 if comment not found', async () => {
-      const response = await request(app.getHttpServer())
-        .patch('/comment/999')
-        .set('Authorization', 'Bearer fake-jwt-token')
-        .send({
-          text: 'Edited comment',
-          rating: 5,
-        });
-
-      expect(response.statusCode).toBe(404);
-      expect(response.body.message).toBe('Comment 999 invalid');
-    });
-  });
-
-  describe('DELETE /comment/:id', () => {
-    it('should return 200 on successful delete comment', async () => {
-      const response = await request(app.getHttpServer())
-        .delete(`/comment/${seededComment.id}`)
+        .delete(`/establishment-type/${seededEstablishmentType.id}`)
         .set('Authorization', 'Bearer fake-jwt-token');
 
       expect(response.statusCode).toBe(200);
     });
 
-    it('should return 401 if user is not authenticated', async () => {
+    it('should return 401 if not authenticated', async () => {
       const response = await request(app.getHttpServer()).delete(
-        `/comment/${seededComment.id}`
+        `/establishment-type/${seededEstablishmentType.id}`
       );
 
       expect(response.statusCode).toBe(401);
-      expect(response.body.message).toBe('Unauthorized');
     });
 
-    it('should return 404 if comment not found', async () => {
+    it('should return 404 if establishment type not found', async () => {
       const response = await request(app.getHttpServer())
-        .delete('/comment/999')
+        .delete(`/establishment-type/999999`)
         .set('Authorization', 'Bearer fake-jwt-token');
 
       expect(response.statusCode).toBe(404);
-      expect(response.body.message).toBe('Comment 999 not found');
+    });
+
+    it('should return 400 if id is not valid', async () => {
+      const response = await request(app.getHttpServer())
+        .delete(`/establishment-type/invalid-id`)
+        .set('Authorization', 'Bearer fake-jwt-token');
+
+      expect(response.statusCode).toBe(400);
     });
   });
 });

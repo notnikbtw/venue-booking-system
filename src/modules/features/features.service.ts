@@ -2,7 +2,11 @@ import { FileUploadService } from '@common/services/file-upload.service';
 import { CreateFeatureDto } from '@modules/features/dto/create-feature.dto';
 import { UpdateFeatureDto } from '@modules/features/dto/update-feature.dto';
 import { Feature } from '@modules/features/entities/feature.entity';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
@@ -15,6 +19,14 @@ export class FeaturesService {
   ) {}
 
   async create(dto: CreateFeatureDto, image?: Express.Multer.File) {
+    const existingFeature = await this.featureRepository.findOne({
+      where: { name: dto.name },
+    });
+
+    if (existingFeature) {
+      throw new ConflictException('Feature already exists');
+    }
+
     const feature = this.featureRepository.create({
       name: dto.name,
       image: image ? this.fileUploadService.getFileUrl(image.filename) : null,

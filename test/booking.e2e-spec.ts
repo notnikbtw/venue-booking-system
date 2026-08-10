@@ -1,7 +1,10 @@
 import { JwtAuthGuard } from '@common/guard/jwt-auth.guard';
-import { Booking } from '@modules/booking/entities/booking.entity';
+import {
+  Booking,
+  BookingStatus,
+} from '@modules/booking/entities/booking.entity';
 import { Establishment } from '@modules/establishment/entities/establishment.entity';
-import { User } from '@modules/users/entities/user.entity';
+import { User, UserRole } from '@modules/users/entities/user.entity';
 import {
   INestApplication,
   UnauthorizedException,
@@ -10,12 +13,20 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import * as bcrypt from 'bcrypt';
 import request from 'supertest';
+import { Repository } from 'typeorm';
 
 import { AppModule } from '@/app.module';
 
 describe('Booking System', () => {
   let app: INestApplication;
+  let userRepo: Repository<User>;
+  let bookingRepo: Repository<Booking>;
+  let establishmentRepo: Repository<Establishment>;
+  let seededUser: User;
+  let seededBooking: Booking;
+  let seededEstablishment: Establishment;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -24,119 +35,80 @@ describe('Booking System', () => {
       .overrideGuard(JwtAuthGuard)
       .useValue({
         canActivate: context => {
-          const request = context.switchToHttp().getRequest();
-          const authHeader = request.headers.authorization;
+          const req = context.switchToHttp().getRequest();
+          const authHeader = req.headers.authorization;
 
-          if (
-            !authHeader ||
-            !authHeader.startsWith('Bearer ') ||
-            authHeader === 'Bearer '
-          ) {
+          if (!authHeader || !authHeader.startsWith('Bearer ')) {
             throw new UnauthorizedException();
           }
 
-          request.user = { id: 1 };
+          req.user = {
+            id: seededUser?.id ?? 1,
+            role: seededUser?.role ?? UserRole.USER,
+          };
           return true;
         },
       })
       .overrideProvider(ConfigService)
       .useValue({
-        get: jest.fn().mockImplementation((key: string) => {
+        get: (key: string) => {
           if (key === 'database') {
             return {
               type: 'better-sqlite3',
               database: ':memory:',
-              entities: [],
+              entities: [User, Booking, Establishment],
               synchronize: true,
             };
           }
           return 'some-value';
-        }),
-        getOrThrow: jest.fn().mockImplementation((key: string) => {
-          return 'some-value';
-        }),
-      })
-      .overrideProvider(getRepositoryToken(User))
-      .useValue({
-        findOne: jest.fn().mockImplementation(options => {
-          if (options.where && options.where.id === 1) {
-            return { id: 1, name: 'John Doe' };
-          }
-          return null;
-        }),
-      })
-      .overrideProvider(getRepositoryToken(Establishment))
-      .useValue({
-        findOne: jest.fn().mockImplementation(options => {
-          if (options.where && options.where.id === 1) {
-            return { id: 1, name: 'Restaurant', totalSeats: 50 };
-          }
-          return null;
-        }),
-      })
-      .overrideProvider(getRepositoryToken(Booking))
-      .useValue({
-        findOne: jest.fn().mockImplementation(options => {
-          if (options.where && options.where.id === 1) {
-            return {
-              id: 1,
-              bookingDate: '2026-01-01',
-              bookingTime: '18:00',
-              numberOfGuests: 2,
-              status: 'confirmed',
-              user: { id: 1, name: 'John Doe' },
-              establishment: { id: 1, name: 'Restaurant' },
-            };
-          }
-
-          return null;
-        }),
-
-        find: jest.fn().mockResolvedValue([
-          {
-            id: 1,
-            bookingDate: '2026-01-01',
-            bookingTime: '18:00',
-            numberOfGuests: 2,
-            status: 'confirmed',
-          },
-          {
-            id: 2,
-            bookingDate: '2026-01-02',
-            bookingTime: '20:00',
-            numberOfGuests: 4,
-            status: 'confirmed',
-          },
-        ]),
-
-        createQueryBuilder: jest.fn().mockReturnValue({
-          select: jest.fn().mockReturnThis(),
-          where: jest.fn().mockReturnThis(),
-          andWhere: jest.fn().mockReturnThis(),
-          getRawOne: jest.fn().mockResolvedValue({ sum: '0' }),
-        }),
-
-        create: jest.fn().mockImplementation(dto => dto),
-
-        save: jest.fn().mockImplementation(dto => {
-          return {
-            id: 1,
-            ...dto,
-            status: 'confirmed',
-          };
-        }),
+        },
+        getOrThrow: () => 'some-value',
       })
       .compile();
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
+
+    userRepo = moduleFixture.get(getRepositoryToken(User));
+    bookingRepo = moduleFixture.get(getRepositoryToken(Booking));
+    establishmentRepo = moduleFixture.get(getRepositoryToken(Establishment));
   });
 
   afterAll(async () => {
-    if (app) {
-      await app.close();
-    }
+    await app.close();
+  });
+
+  beforeEach(async () => {
+    await bookingRepo.createQueryBuilder().delete().execute();
+    await userRepo.createQueryBuilder().delete().execute();
+    await establishmentRepo.createQueryBuilder().delete().execute();
+
+    seededUser = await userRepo.save({
+      name: 'John Doe',
+      email: 'john@example.com',
+      password: await bcrypt.hash('Password123', 10),
+      phoneNumber: '+380966243761',
+      avatarUrl: 'https://example.com/avatar.png',
+      role: UserRole.SUPER_ADMIN,
+    });
+
+    seededEstablishment = await establishmentRepo.save({
+      name: 'Restaurant',
+      address: '123 Main St',
+      description: 'A nice restaurant',
+      totalSeats: 50,
+      owner: seededUser,
+    });
+
+    seededBooking = await bookingRepo.save({
+      bookingDate: new Date('2026-01-01'),
+      bookingTime: '18:00',
+      numberOfGuests: 2,
+      status: BookingStatus.CONFIRMED,
+      user: seededUser,
+      establishment: seededEstablishment,
+    });
   });
 
   describe('POST /booking', () => {
@@ -145,7 +117,7 @@ describe('Booking System', () => {
         .post('/booking')
         .set('Authorization', 'Bearer fake-jwt-token')
         .send({
-          establishment: 1,
+          establishment: seededEstablishment?.id,
           bookingDate: '2026-01-01',
           bookingTime: '18:00',
           numberOfGuests: 2,
@@ -166,7 +138,7 @@ describe('Booking System', () => {
         .post('/booking')
         .set('Authorization', 'Bearer fake-jwt-token')
         .send({
-          establishment: 1,
+          establishment: seededEstablishment?.id,
           bookingDate: '',
           bookingTime: '18:00',
           numberOfGuests: 2,
@@ -200,8 +172,8 @@ describe('Booking System', () => {
 
       expect(response.statusCode).toBe(200);
       expect(Array.isArray(response.body)).toBe(true);
-      expect(response.body.length).toBe(2);
-      expect(response.body[0]).toHaveProperty('id', 1);
+      expect(response.body.length).toBe(1);
+      expect(response.body[0]).toHaveProperty('id', seededBooking?.id);
     });
 
     it('should respond with 401 if user is not authorized', async () => {
@@ -241,7 +213,7 @@ describe('Booking System', () => {
   describe('GET establishment/:establishmentId', () => {
     it('should return establishment bookings', async () => {
       const response = await request(app.getHttpServer()).get(
-        '/booking/establishment/1'
+        `/booking/establishment/${seededEstablishment?.id}`
       );
 
       expect(response.statusCode).toBe(200);
@@ -253,17 +225,19 @@ describe('Booking System', () => {
   describe('GET /booking/:id', () => {
     it('should respond with 200 on successful found by ID', async () => {
       const response = await request(app.getHttpServer())
-        .get('/booking/1')
+        .get(`/booking/${seededBooking?.id}`)
         .set('Authorization', 'Bearer fake-jwt-token');
 
       expect(response.statusCode).toBe(200);
 
-      expect(response.body).toHaveProperty('id', 1);
-      expect(response.body.status).toBe('confirmed');
+      expect(response.body).toHaveProperty('id', seededBooking?.id);
+      expect(response.body.status).toBe(BookingStatus.CONFIRMED);
     });
 
     it('should respond with 401 if user is not authorized', async () => {
-      const response = await request(app.getHttpServer()).get('/booking/1');
+      const response = await request(app.getHttpServer()).get(
+        `/booking/${seededBooking?.id}`
+      );
 
       expect(response.statusCode).toBe(401);
       expect(response.body.message).toBe('Unauthorized');
