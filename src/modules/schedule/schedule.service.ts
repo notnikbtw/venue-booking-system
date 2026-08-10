@@ -41,6 +41,14 @@ export class ScheduleService {
   }
 
   async findByEstablishment(establishmentId: number) {
+    const establishment = await this.establishmentRepository.findOneBy({
+      id: establishmentId,
+    });
+
+    if (!establishment) {
+      throw new NotFoundException(`Establishment ${establishmentId} not found`);
+    }
+
     return this.scheduleRepository.find({
       where: {
         establishment: { id: establishmentId },
