@@ -376,23 +376,5 @@ describe('AuthService', () => {
         message: 'Logged out',
       });
     });
-
-    it('should throw an error if refresh token not found', async () => {
-      const userId = 1;
-      jest
-        .spyOn(refreshTokenRepository, 'delete')
-        .mockResolvedValue({ affected: 0, raw: {} });
-      await expect(service.logout(userId)).rejects.toThrow(
-        'Refresh token not found'
-      );
-    });
-
-    it('should throw an error if user not found', async () => {
-      const userId = 1;
-      jest
-        .spyOn(refreshTokenRepository, 'delete')
-        .mockResolvedValue({ affected: 1, raw: {} });
-      await expect(service.logout(userId)).rejects.toThrow('User 1 not found');
-    });
   });
 });

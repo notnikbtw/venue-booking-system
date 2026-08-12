@@ -61,6 +61,37 @@ describe('UsersService', () => {
     expect(service).toBeDefined();
   });
 
+  const mockUsers = [
+    {
+      id: 1,
+      name: 'User',
+      email: 'email@example.com',
+      role: UserRole.MODERATOR,
+    } as User,
+    {
+      id: 2,
+      name: 'User 2',
+      email: 'email2@example.com',
+      role: UserRole.MODERATOR,
+    } as User,
+  ];
+
+  const queryBuilder = {
+    leftJoinAndSelect: jest.fn().mockReturnThis(),
+    orderBy: jest.fn().mockReturnThis(),
+    andWhere: jest.fn().mockReturnThis(),
+    skip: jest.fn().mockReturnThis(),
+    take: jest.fn().mockReturnThis(),
+    clone: jest.fn().mockReturnThis(),
+    offset: jest.fn().mockReturnThis(),
+    limit: jest.fn().mockReturnThis(),
+    getCount: jest.fn().mockResolvedValue(mockUsers.length),
+    getRawAndEntities: jest.fn().mockResolvedValue({
+      entities: mockUsers,
+      raw: [],
+    }),
+  };
+
   describe('updateCurrentUser', () => {
     it('should update current user', async () => {
       const updatedUser = {
@@ -155,22 +186,6 @@ describe('UsersService', () => {
         } as User,
       ];
 
-      const queryBuilder = {
-        leftJoinAndSelect: jest.fn().mockReturnThis(),
-        orderBy: jest.fn().mockReturnThis(),
-        andWhere: jest.fn().mockReturnThis(),
-        skip: jest.fn().mockReturnThis(),
-        take: jest.fn().mockReturnThis(),
-        clone: jest.fn().mockReturnThis(),
-        offset: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockReturnThis(),
-        getCount: jest.fn().mockResolvedValue(mockUsers.length),
-        getRawAndEntities: jest.fn().mockResolvedValue({
-          entities: mockUsers,
-          raw: [],
-        }),
-      };
-
       jest
         .spyOn(usersRepository, 'createQueryBuilder')
         .mockReturnValue(queryBuilder as any);
@@ -209,22 +224,6 @@ describe('UsersService', () => {
         } as User,
       ];
 
-      const queryBuilder = {
-        leftJoinAndSelect: jest.fn().mockReturnThis(),
-        orderBy: jest.fn().mockReturnThis(),
-        andWhere: jest.fn().mockReturnThis(),
-        skip: jest.fn().mockReturnThis(),
-        take: jest.fn().mockReturnThis(),
-        clone: jest.fn().mockReturnThis(),
-        offset: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockReturnThis(),
-        getCount: jest.fn().mockResolvedValue(mockUsers.length),
-        getRawAndEntities: jest.fn().mockResolvedValue({
-          entities: mockUsers,
-          raw: [],
-        }),
-      };
-
       jest
         .spyOn(usersRepository, 'createQueryBuilder')
         .mockReturnValue(queryBuilder as any);
@@ -249,15 +248,8 @@ describe('UsersService', () => {
     });
 
     it('should return empty array when no users are found', async () => {
-      const queryBuilder = {
-        leftJoinAndSelect: jest.fn().mockReturnThis(),
-        orderBy: jest.fn().mockReturnThis(),
-        andWhere: jest.fn().mockReturnThis(),
-        skip: jest.fn().mockReturnThis(),
-        take: jest.fn().mockReturnThis(),
-        clone: jest.fn().mockReturnThis(),
-        offset: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockReturnThis(),
+      const emptyQueryBuilder = {
+        ...queryBuilder,
         getCount: jest.fn().mockResolvedValue(0),
         getRawAndEntities: jest.fn().mockResolvedValue({
           entities: [],
@@ -267,7 +259,7 @@ describe('UsersService', () => {
 
       jest
         .spyOn(usersRepository, 'createQueryBuilder')
-        .mockReturnValue(queryBuilder as any);
+        .mockReturnValue(emptyQueryBuilder as any);
 
       const pageOptionsDto = {
         page: 1,
@@ -279,12 +271,12 @@ describe('UsersService', () => {
       const result = await service.findAll(pageOptionsDto);
 
       expect(result.data).toEqual([]);
-      expect(queryBuilder.leftJoinAndSelect).toHaveBeenCalledWith(
+      expect(emptyQueryBuilder.leftJoinAndSelect).toHaveBeenCalledWith(
         'users.bookings',
         'bookings'
       );
-      expect(queryBuilder.getCount).toHaveBeenCalled();
-      expect(queryBuilder.getRawAndEntities).toHaveBeenCalled();
+      expect(emptyQueryBuilder.getCount).toHaveBeenCalled();
+      expect(emptyQueryBuilder.getRawAndEntities).toHaveBeenCalled();
     });
   });
 

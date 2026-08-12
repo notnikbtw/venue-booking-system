@@ -77,6 +77,38 @@ describe('CommentService', () => {
     expect(service).toBeDefined();
   });
 
+  const mockUser = {
+    id: 1,
+    name: 'User',
+  } as User;
+
+  const mockEstablishment = {
+    id: 1,
+    name: 'Establishment',
+    ownerId: 1,
+    moderators: [
+      {
+        id: 1,
+        name: 'User',
+      } as User,
+    ],
+    totalSeats: 10,
+    comments: [
+      {
+        rating: 5,
+      },
+    ],
+  } as Establishment;
+
+  const mockComment = {
+    id: 1,
+    text: 'Some text',
+    rating: 5,
+    createdAt: new Date(),
+    establishment: mockEstablishment,
+    user: mockUser,
+  } as Comment;
+
   describe('create', () => {
     const createCommentDto: CreateCommentDto = {
       text: 'Some text',
@@ -85,26 +117,6 @@ describe('CommentService', () => {
     };
 
     it('should create a comment when user and establishment exist', async () => {
-      const mockUser = { id: 1, name: 'User' } as User;
-      const mockEstablishment = {
-        id: 1,
-        name: 'Establishment',
-        totalSeats: 10,
-        comments: [
-          {
-            rating: 5,
-          },
-        ],
-      } as Establishment;
-      const mockComment = {
-        id: 1,
-        text: 'Some text',
-        rating: 5,
-        createdAt: new Date(),
-        establishment: mockEstablishment,
-        user: mockUser,
-      } as Comment;
-
       jest.spyOn(userRepository, 'findOneBy').mockResolvedValue(mockUser);
       jest
         .spyOn(establishmentRepository, 'findOneBy')
@@ -162,21 +174,6 @@ describe('CommentService', () => {
     });
 
     it('throws exception when user already commented on establishment', async () => {
-      const mockComment = {
-        id: 1,
-        text: 'Some text',
-        rating: 5,
-        createdAt: new Date(),
-        establishment: {
-          id: 1,
-          name: 'Establishment',
-        } as Establishment,
-        user: {
-          id: 1,
-          name: 'User',
-        } as User,
-      } as Comment;
-
       jest.spyOn(commentRepository, 'findOne').mockResolvedValue(mockComment);
       await expect(service.create(createCommentDto, 1)).rejects.toThrow();
       expect(commentRepository.create).not.toHaveBeenCalled();
@@ -273,17 +270,6 @@ describe('CommentService', () => {
         order: 'DESC',
       } as PageOptionsDto;
 
-      const mockUser = { id: 1, name: 'User' } as User;
-      const mockEstablishment = {
-        id: 1,
-        name: 'Establishment',
-        totalSeats: 10,
-        comments: [
-          {
-            rating: 5,
-          },
-        ],
-      } as Establishment;
       const mockComments = [
         {
           id: 1,
@@ -362,24 +348,6 @@ describe('CommentService', () => {
         rating: 4,
       };
 
-      const mockEstablishment = {
-        id: 1,
-        name: 'Establishment',
-        comments: [{ rating: 4 }],
-      } as Establishment;
-
-      const mockComment = {
-        id: 1,
-        text: 'Some text',
-        rating: 5,
-        createdAt: new Date(),
-        establishment: mockEstablishment,
-        user: {
-          id: 1,
-          name: 'User',
-        } as User,
-      } as Comment;
-
       const savedComment = {
         ...mockComment,
         ...updatedComment,
@@ -420,34 +388,6 @@ describe('CommentService', () => {
 
   describe('Delete comment', () => {
     it('should delete comment', async () => {
-      const mockEstablishment = {
-        id: 1,
-        name: 'Establishment',
-        moderators: [
-          {
-            id: 1,
-            name: 'User',
-          },
-        ],
-        comments: [
-          {
-            rating: 5,
-          },
-        ],
-      } as Establishment;
-
-      const mockComment = {
-        id: 1,
-        text: 'Some text',
-        rating: 5,
-        createdAt: new Date(),
-        establishment: mockEstablishment,
-        user: {
-          id: 1,
-          name: 'User',
-        } as User,
-      } as Comment;
-
       jest.spyOn(commentRepository, 'findOne').mockResolvedValue(mockComment);
       jest.spyOn(commentRepository, 'delete').mockResolvedValue({
         affected: 1,
@@ -473,34 +413,6 @@ describe('CommentService', () => {
     });
 
     it('should throw ForbiddenException if user is not owner or moderator', async () => {
-      const mockEstablishment = {
-        id: 1,
-        name: 'Establishment',
-        moderators: [
-          {
-            id: 1,
-            name: 'User',
-          },
-        ],
-        comments: [
-          {
-            rating: 5,
-          },
-        ],
-      } as Establishment;
-
-      const mockComment = {
-        id: 1,
-        text: 'Some text',
-        rating: 5,
-        createdAt: new Date(),
-        establishment: mockEstablishment,
-        user: {
-          id: 1,
-          name: 'User',
-        } as User,
-      } as Comment;
-
       jest.spyOn(commentRepository, 'findOne').mockResolvedValue(mockComment);
       jest.spyOn(commentRepository, 'delete').mockResolvedValue({
         affected: 1,
