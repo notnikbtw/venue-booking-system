@@ -1,6 +1,7 @@
 import { BookingController } from '@modules/booking/booking.controller';
 import { BookingService } from '@modules/booking/booking.service';
 import { Booking } from '@modules/booking/entities/booking.entity';
+import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 interface RequestWithUser {
@@ -48,6 +49,8 @@ describe('BookingController', () => {
       numberOfGuests: 2,
     };
 
+    const req: RequestWithUser = { user: { id: 1 } };
+
     it('should create a new booking and pass the current user id to the service', async () => {
       const mockBooking = {
         id: 1,
@@ -60,17 +63,27 @@ describe('BookingController', () => {
         .spyOn(service, 'create')
         .mockResolvedValue(mockBooking as unknown as Booking);
 
-      const req: RequestWithUser = { user: { id: 1 } };
       const result = await controller.create(createBookingDto, req);
 
       expect(result).toEqual(mockBooking);
       expect(service.create).toHaveBeenCalledWith(createBookingDto, 1);
       expect(service.create).toHaveBeenCalledTimes(1);
     });
+
+    it('should throw an error when service.create fails', async () => {
+      jest
+        .spyOn(service, 'create')
+        .mockRejectedValue(new BadRequestException());
+      await expect(controller.create(createBookingDto, req)).rejects.toThrow(
+        BadRequestException
+      );
+    });
   });
 
   describe('getUserBookings', () => {
-    it("should return the current user's bookings", async () => {
+    const req: RequestWithUser = { user: { id: 1 } };
+
+    it('should return the current user bookings', async () => {
       const mockData = [
         {
           user: { id: 1, name: 'User 1' },
@@ -87,11 +100,19 @@ describe('BookingController', () => {
         .spyOn(service, 'getUserBookings')
         .mockResolvedValue(mockData as unknown as Booking[]);
 
-      const req: RequestWithUser = { user: { id: 1 } };
       const result = await controller.getUserBookings(req);
 
       expect(result).toEqual(mockData);
       expect(service.getUserBookings).toHaveBeenCalledWith(1);
+    });
+
+    it('should throw an error when service.getUserBookings fails', async () => {
+      jest
+        .spyOn(service, 'getUserBookings')
+        .mockRejectedValue(new BadRequestException());
+      await expect(controller.getUserBookings(req)).rejects.toThrow(
+        BadRequestException
+      );
     });
   });
 
@@ -117,6 +138,15 @@ describe('BookingController', () => {
 
       expect(result).toEqual(mockData);
       expect(service.getEstablishmentBookings).toHaveBeenCalledWith(1);
+    });
+
+    it('should throw an error when service.getEstablishmentBookings fails', async () => {
+      jest
+        .spyOn(service, 'getEstablishmentBookings')
+        .mockRejectedValue(new BadRequestException());
+      await expect(controller.getEstablishmentBookings('1')).rejects.toThrow(
+        BadRequestException
+      );
     });
   });
 
@@ -144,6 +174,15 @@ describe('BookingController', () => {
       expect(result).toEqual(mockData);
       expect(service.getAllBookings).toHaveBeenCalledTimes(1);
     });
+
+    it('should throw an error when service.getAllBookings fails', async () => {
+      jest
+        .spyOn(service, 'getAllBookings')
+        .mockRejectedValue(new BadRequestException());
+      await expect(controller.getAllBookings()).rejects.toThrow(
+        BadRequestException
+      );
+    });
   });
 
   describe('getBookingById', () => {
@@ -158,6 +197,15 @@ describe('BookingController', () => {
 
       expect(result).toEqual(mockBooking);
       expect(service.getBookingById).toHaveBeenCalledWith(1);
+    });
+
+    it('should throw an error when service.getBookingById fails', async () => {
+      jest
+        .spyOn(service, 'getBookingById')
+        .mockRejectedValue(new BadRequestException());
+      await expect(controller.getBookingById('1')).rejects.toThrow(
+        BadRequestException
+      );
     });
   });
 });
