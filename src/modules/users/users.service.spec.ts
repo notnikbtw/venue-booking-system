@@ -208,7 +208,7 @@ describe('UsersService', () => {
       expect(queryBuilder.getRawAndEntities).toHaveBeenCalled();
     });
 
-    it('should retutn filtered users', async () => {
+    it('should return filtered users', async () => {
       const mockUsers = [
         {
           id: 1,
@@ -333,7 +333,7 @@ describe('UsersService', () => {
       });
     });
 
-    it('should return empty array when no user is found', async () => {
+    it('should throw an error when no user is found', async () => {
       jest.spyOn(usersRepository, 'findOne').mockResolvedValue(null);
 
       await expect(service.getUserById(1)).rejects.toThrow('User 1 not found');

@@ -60,7 +60,7 @@ describe('ScheduleService', () => {
     expect(service).toBeDefined();
   });
 
-  describe('Create schedue', () => {
+  describe('Create schedule', () => {
     const createScheduleItemDto: CreateScheduleItemDto[] = [
       {
         day: [ScheduleDays.MONDAY],
@@ -124,14 +124,19 @@ describe('ScheduleService', () => {
       );
     });
 
-    it('should throw exception when schedule items are empty', async () => {
+    it('should return empty array when schedule items are empty', async () => {
+      const mockEstablishment = { id: 1 } as Establishment;
       const emptyScheduleDto: CreateSchedulesDto = {
         establishmentId: 1,
         scheduleItems: [],
       };
-      await expect(service.create(emptyScheduleDto)).rejects.toThrow(
-        NotFoundException
-      );
+      jest
+        .spyOn(establishmentRepository, 'findOne')
+        .mockResolvedValue(mockEstablishment);
+      jest.spyOn(scheduleRepository, 'save').mockResolvedValue([] as any);
+
+      const result = await service.create(emptyScheduleDto);
+      expect(result).toEqual([]);
     });
   });
 
