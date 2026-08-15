@@ -25,6 +25,7 @@ type EstablishmentWithMetrics = Establishment & {
   commentsCount: number;
   avgRating: number;
   weightedRating: number;
+  isFavorite?: boolean;
 };
 
 @Injectable()
@@ -70,7 +71,7 @@ export class EstablishmentService {
   }
 
   async create(createEstablishmentDto: CreateEstablishmentDto, userId: number) {
-    const address = `${createEstablishmentDto.city}, ${createEstablishmentDto.street} ${createEstablishmentDto.building}}`;
+    const address = `${createEstablishmentDto.city}, ${createEstablishmentDto.street} ${createEstablishmentDto.building}`;
 
     const coords = await this.geocodingService.geocode(address);
 
