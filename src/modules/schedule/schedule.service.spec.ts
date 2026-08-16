@@ -3,6 +3,7 @@ import {
   CreateScheduleItemDto,
   CreateSchedulesDto,
 } from '@modules/schedule/dto/create-schedule.dto';
+import { UpdateSingleScheduleDto } from '@modules/schedule/dto/update-schedule.dto';
 import {
   Schedule,
   ScheduleDays,
@@ -12,8 +13,6 @@ import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-
-import { UpdateSingleScheduleDto } from './dto/update-schedule.dto';
 
 describe('ScheduleService', () => {
   let service: ScheduleService;
@@ -38,6 +37,7 @@ describe('ScheduleService', () => {
           provide: getRepositoryToken(Establishment),
           useValue: {
             findOne: jest.fn(),
+            findOneBy: jest.fn(),
           },
         },
       ],
@@ -158,6 +158,9 @@ describe('ScheduleService', () => {
           closeTime: '19:00',
         },
       ] as Schedule[];
+      jest
+        .spyOn(establishmentRepository, 'findOneBy')
+        .mockResolvedValue(mockEstablishment);
       jest.spyOn(scheduleRepository, 'find').mockResolvedValue(mockSchedule);
 
       const result = await service.findByEstablishment(mockEstablishment.id);
@@ -165,9 +168,20 @@ describe('ScheduleService', () => {
     });
 
     it('should return empty values when no schedule found', async () => {
+      jest
+        .spyOn(establishmentRepository, 'findOneBy')
+        .mockResolvedValue(mockEstablishment);
       jest.spyOn(scheduleRepository, 'find').mockResolvedValue([]);
       const result = await service.findByEstablishment(mockEstablishment.id);
       expect(result).toEqual([]);
+    });
+
+    it('should throw exception when establishment does not exist', async () => {
+      jest.spyOn(establishmentRepository, 'findOneBy').mockResolvedValue(null);
+
+      await expect(
+        service.findByEstablishment(mockEstablishment.id)
+      ).rejects.toThrow(NotFoundException);
     });
   });
 

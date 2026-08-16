@@ -48,6 +48,7 @@ describe('BookingController', () => {
       bookingTime: '18:30',
       numberOfGuests: 2,
     };
+    const req: RequestWithUser = { user: { id: 1 } };
 
     it('should create a new booking and pass the current user id to the service', async () => {
       const mockBooking = {
@@ -61,7 +62,6 @@ describe('BookingController', () => {
         .spyOn(service, 'create')
         .mockResolvedValue(mockBooking as unknown as Booking);
 
-      const req: RequestWithUser = { user: { id: 1 } };
       const result = await controller.create(createBookingDto, req);
 
       expect(result).toEqual(mockBooking);
@@ -104,7 +104,6 @@ describe('BookingController', () => {
       expect(result).toEqual(mockData);
       expect(service.getUserBookings).toHaveBeenCalledWith(1);
     });
-  });
 
     it('should throw an error when service.getUserBookings fails', async () => {
       jest
@@ -139,7 +138,6 @@ describe('BookingController', () => {
       expect(result).toEqual(mockData);
       expect(service.getEstablishmentBookings).toHaveBeenCalledWith(1);
     });
-  });
 
     it('should throw an error when service.getEstablishmentBookings fails', async () => {
       jest
@@ -175,7 +173,6 @@ describe('BookingController', () => {
       expect(result).toEqual(mockData);
       expect(service.getAllBookings).toHaveBeenCalledTimes(1);
     });
-  });
 
     it('should throw an error when service.getAllBookings fails', async () => {
       jest

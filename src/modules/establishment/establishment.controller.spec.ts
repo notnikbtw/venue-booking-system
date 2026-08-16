@@ -1,3 +1,8 @@
+import { Order } from '@common/pagination/constants/order';
+import {
+  PageOptionsDto,
+  SortField,
+} from '@common/pagination/dto/page-options.dto';
 import { PageDto } from '@common/pagination/dto/page.dto';
 import { FileUploadService } from '@common/services/file-upload.service';
 import { Comment } from '@modules/comment/entities/comment.entity';
@@ -13,12 +18,6 @@ import { User, UserRole } from '@modules/users/entities/user.entity';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-
-import { Order } from '@/common/pagination/constants/order';
-import {
-  PageOptionsDto,
-  SortField,
-} from '@/common/pagination/dto/page-options.dto';
 
 describe('EstablishmentController', () => {
   let controller: EstablishmentController;
@@ -437,7 +436,7 @@ describe('EstablishmentController', () => {
 
       jest.spyOn(service, 'getAllComments').mockResolvedValue(mockComments);
 
-      const result = await controller.getAllComments('1');
+      const result = await controller.getAllComments(1);
 
       expect(result).toEqual(mockComments);
       expect(service.getAllComments).toHaveBeenCalledWith(1);
@@ -448,7 +447,7 @@ describe('EstablishmentController', () => {
         .spyOn(service, 'getAllComments')
         .mockRejectedValue(new NotFoundException('Establishment 99 not found'));
 
-      await expect(controller.getAllComments('99')).rejects.toThrow(
+      await expect(controller.getAllComments(99)).rejects.toThrow(
         NotFoundException
       );
       expect(service.getAllComments).toHaveBeenCalledWith(99);

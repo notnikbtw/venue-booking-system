@@ -103,7 +103,7 @@ describe('ScheduleController', () => {
         .spyOn(service, 'findByEstablishment')
         .mockResolvedValue(mockSchedules);
 
-      const result = await controller.findByEstablishment('1');
+      const result = await controller.findByEstablishment(1);
       expect(service.findByEstablishment).toHaveBeenCalledWith(1);
       expect(result).toEqual(mockSchedules);
     });
@@ -111,7 +111,7 @@ describe('ScheduleController', () => {
     it('should return empty array if no schedules found', async () => {
       jest.spyOn(service, 'findByEstablishment').mockResolvedValue([]);
 
-      const result = await controller.findByEstablishment('1');
+      const result = await controller.findByEstablishment(1);
       expect(service.findByEstablishment).toHaveBeenCalledWith(1);
       expect(result).toEqual([]);
     });
@@ -121,7 +121,7 @@ describe('ScheduleController', () => {
         .spyOn(service, 'findByEstablishment')
         .mockRejectedValue(new NotFoundException());
 
-      await expect(controller.findByEstablishment('1')).rejects.toThrow(
+      await expect(controller.findByEstablishment(1)).rejects.toThrow(
         NotFoundException
       );
     });
@@ -139,7 +139,7 @@ describe('ScheduleController', () => {
 
       jest.spyOn(service, 'update').mockResolvedValue(mockUpdated);
 
-      const result = await controller.update('1', updateDto);
+      const result = await controller.update(1, updateDto);
       expect(service.update).toHaveBeenCalledWith(1, updateDto);
       expect(result).toEqual(mockUpdated);
     });
@@ -147,9 +147,7 @@ describe('ScheduleController', () => {
     it('should throw error when schedule is not found', async () => {
       jest.spyOn(service, 'update').mockRejectedValue(new NotFoundException());
 
-      await expect(controller.update('1', {})).rejects.toThrow(
-        NotFoundException
-      );
+      await expect(controller.update(1, {})).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -157,7 +155,7 @@ describe('ScheduleController', () => {
     it('should delete schedule by id', async () => {
       jest.spyOn(service, 'remove').mockResolvedValue(undefined);
 
-      const result = await controller.remove('1');
+      const result = await controller.remove(1);
       expect(service.remove).toHaveBeenCalledWith(1);
       expect(result).toBeUndefined();
     });
@@ -165,7 +163,7 @@ describe('ScheduleController', () => {
     it('should throw error when schedule is not found', async () => {
       jest.spyOn(service, 'remove').mockRejectedValue(new NotFoundException());
 
-      await expect(controller.remove('1')).rejects.toThrow(NotFoundException);
+      await expect(controller.remove(1)).rejects.toThrow(NotFoundException);
     });
   });
 });

@@ -297,6 +297,10 @@ describe('CommentService', () => {
       ] as Comment[];
 
       jest
+        .spyOn(establishmentRepository, 'findOneBy')
+        .mockResolvedValue(mockEstablishment as any);
+
+      jest
         .spyOn(commentRepository, 'createQueryBuilder')
         .mockReturnValue(mockQueryBuilder);
 
@@ -329,6 +333,10 @@ describe('CommentService', () => {
       const mockComments = [] as Comment[];
 
       jest
+        .spyOn(establishmentRepository, 'findOneBy')
+        .mockResolvedValue(mockEstablishment as any);
+
+      jest
         .spyOn(commentRepository, 'createQueryBuilder')
         .mockReturnValue(mockQueryBuilder);
 
@@ -345,6 +353,24 @@ describe('CommentService', () => {
         'comments.establishment = :establishmentId',
         { establishmentId: 1 }
       );
+    });
+
+    it('should throw NotFoundException when establishment does not exist', async () => {
+      const pageOptionsDto = {
+        page: 1,
+        take: 10,
+        skip: 0,
+        order: 'DESC',
+      } as PageOptionsDto;
+
+      jest
+        .spyOn(commentRepository, 'createQueryBuilder')
+        .mockReturnValue(mockQueryBuilder);
+      jest.spyOn(establishmentRepository, 'findOneBy').mockResolvedValue(null);
+
+      await expect(
+        service.findByEstablishment(99, pageOptionsDto)
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
