@@ -48,7 +48,7 @@ export class AuthService {
 
   async register(dto: CreateAuthDto) {
     const existing = await this.userRepo.findOne({
-      where: { email: dto.email },
+      where: [{ email: dto.email }, { phoneNumber: dto.phoneNumber }],
     });
     if (existing) throw new ConflictException('User already exists');
 
@@ -138,10 +138,5 @@ export class AuthService {
   async logout(userId: number) {
     await this.refreshTokenRepo.delete({ user: { id: userId } });
     return { message: 'Logged out' };
-  }
-
-  async logoutAllDevices(userId: number) {
-    await this.refreshTokenRepo.delete({ user: { id: userId } });
-    return { message: 'Logged out from all devices' };
   }
 }

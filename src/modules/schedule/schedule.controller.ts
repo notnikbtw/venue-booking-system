@@ -12,6 +12,7 @@ import {
   Param,
   Delete,
   UseGuards,
+  ParseIntPipe,
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
@@ -48,8 +49,10 @@ export class ScheduleController {
   @ApiOperation({ summary: 'Get schedule for establishment' })
   @ApiOkResponse({ description: 'Success', type: Schedule })
   @ApiBadRequestResponse({ description: 'Bad request data' })
-  findByEstablishment(@Param('establishmentId') establishmentId: string) {
-    return this.scheduleService.findByEstablishment(+establishmentId);
+  findByEstablishment(
+    @Param('establishmentId', ParseIntPipe) establishmentId: number
+  ) {
+    return this.scheduleService.findByEstablishment(establishmentId);
   }
 
   @Patch(':id')
@@ -61,10 +64,10 @@ export class ScheduleController {
   @ApiUnauthorizedResponse({ description: 'Not authenticated' })
   @ApiForbiddenResponse({ description: 'Insufficient permissions' })
   update(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() updateSingleScheduleDto: UpdateSingleScheduleDto
   ) {
-    return this.scheduleService.update(+id, updateSingleScheduleDto);
+    return this.scheduleService.update(id, updateSingleScheduleDto);
   }
 
   @Delete(':id')
@@ -74,7 +77,7 @@ export class ScheduleController {
   @ApiBadRequestResponse({ description: 'Bad request data' })
   @ApiUnauthorizedResponse({ description: 'Not authenticated' })
   @ApiForbiddenResponse({ description: 'Insufficient permissions' })
-  remove(@Param('id') id: string) {
-    return this.scheduleService.remove(+id);
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.scheduleService.remove(id);
   }
 }

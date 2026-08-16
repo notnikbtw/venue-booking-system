@@ -1,7 +1,7 @@
-import { randomUUID } from 'crypto'
+import { randomUUID } from 'crypto';
 
 export function generateAvatarSeed(): string {
-  return randomUUID()
+  return randomUUID();
 }
 
 export function generateAvatarUrl(seed: string): string {
