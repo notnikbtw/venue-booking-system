@@ -174,8 +174,15 @@ describe('CommentService', () => {
     });
 
     it('throws exception when user already commented on establishment', async () => {
+      jest.spyOn(userRepository, 'findOneBy').mockResolvedValue(mockUser);
+      jest
+        .spyOn(establishmentRepository, 'findOneBy')
+        .mockResolvedValue(mockEstablishment);
       jest.spyOn(commentRepository, 'findOne').mockResolvedValue(mockComment);
-      await expect(service.create(createCommentDto, 1)).rejects.toThrow();
+
+      await expect(service.create(createCommentDto, 1)).rejects.toThrow(
+        'User 1 has already commented on establishment'
+      );
       expect(commentRepository.create).not.toHaveBeenCalled();
     });
   });
@@ -414,6 +421,13 @@ describe('CommentService', () => {
 
     it('should throw ForbiddenException if user is not owner or moderator', async () => {
       jest.spyOn(commentRepository, 'findOne').mockResolvedValue(mockComment);
+      await expect(service.remove(1, 999, UserRole.MODERATOR)).rejects.toThrow(
+        ForbiddenException
+      );
+    });
+
+    it('should allow SUPER_ADMIN to delete comment regardless of ownership', async () => {
+      jest.spyOn(commentRepository, 'findOne').mockResolvedValue(mockComment);
       jest.spyOn(commentRepository, 'delete').mockResolvedValue({
         affected: 1,
         raw: [],
@@ -425,8 +439,74 @@ describe('CommentService', () => {
         .spyOn(establishmentRepository, 'save')
         .mockResolvedValue(mockEstablishment);
 
-      await expect(service.remove(1, 2, UserRole.MODERATOR)).rejects.toThrow(
-        ForbiddenException
+      const result = await service.remove(1, 999, UserRole.SUPER_ADMIN);
+      expect(result).toEqual({ deleted: true });
+    });
+
+    it('should allow establishment moderator to delete comment', async () => {
+      const establishmentWithModerator = {
+        ...mockEstablishment,
+        ownerId: 99,
+        moderators: [{ id: 5, name: 'Mod User' } as User],
+      } as Establishment;
+      const commentWithModEst = {
+        ...mockComment,
+        establishment: establishmentWithModerator,
+      } as Comment;
+
+      jest
+        .spyOn(commentRepository, 'findOne')
+        .mockResolvedValue(commentWithModEst);
+      jest.spyOn(commentRepository, 'delete').mockResolvedValue({
+        affected: 1,
+        raw: [],
+      });
+      jest
+        .spyOn(establishmentRepository, 'findOne')
+        .mockResolvedValue(establishmentWithModerator);
+      jest
+        .spyOn(establishmentRepository, 'save')
+        .mockResolvedValue(establishmentWithModerator);
+
+      const result = await service.remove(1, 5, UserRole.MODERATOR);
+      expect(result).toEqual({ deleted: true });
+    });
+
+    it('should reset rating to 0 when all comments are removed', async () => {
+      const establishmentNoComments = {
+        ...mockEstablishment,
+        comments: [],
+      } as Establishment;
+
+      jest.spyOn(commentRepository, 'findOne').mockResolvedValue(mockComment);
+      jest.spyOn(commentRepository, 'delete').mockResolvedValue({
+        affected: 1,
+        raw: [],
+      });
+      jest
+        .spyOn(establishmentRepository, 'findOne')
+        .mockResolvedValue(establishmentNoComments);
+      const saveSpy = jest
+        .spyOn(establishmentRepository, 'save')
+        .mockResolvedValue(establishmentNoComments);
+
+      await service.remove(1, 1, UserRole.MODERATOR);
+      expect(establishmentNoComments.rating).toBe(0);
+      expect(saveSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ rating: 0 })
+      );
+    });
+
+    it('should throw NotFoundException if establishment is not found during rating update', async () => {
+      jest.spyOn(commentRepository, 'findOne').mockResolvedValue(mockComment);
+      jest.spyOn(commentRepository, 'delete').mockResolvedValue({
+        affected: 1,
+        raw: [],
+      });
+      jest.spyOn(establishmentRepository, 'findOne').mockResolvedValue(null);
+
+      await expect(service.remove(1, 1, UserRole.MODERATOR)).rejects.toThrow(
+        'Establishment 1 not found'
       );
     });
   });

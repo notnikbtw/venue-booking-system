@@ -197,6 +197,42 @@ describe('ScheduleService', () => {
       expect(result).toEqual(mockSchedule);
     });
 
+    it('should update only openTime when closeTime is not provided', async () => {
+      const mockSchedule = {
+        id: 1,
+        day: ScheduleDays.MONDAY,
+        openTime: '08:00',
+        closeTime: '20:00',
+      } as Schedule;
+
+      jest.spyOn(scheduleRepository, 'findOne').mockResolvedValue(mockSchedule);
+      jest
+        .spyOn(scheduleRepository, 'save')
+        .mockImplementation(async s => s as Schedule);
+
+      const result = await service.update(1, { openTime: '09:00' });
+      expect(result.openTime).toBe('09:00');
+      expect(result.closeTime).toBe('20:00');
+    });
+
+    it('should update only closeTime when openTime is not provided', async () => {
+      const mockSchedule = {
+        id: 1,
+        day: ScheduleDays.MONDAY,
+        openTime: '08:00',
+        closeTime: '20:00',
+      } as Schedule;
+
+      jest.spyOn(scheduleRepository, 'findOne').mockResolvedValue(mockSchedule);
+      jest
+        .spyOn(scheduleRepository, 'save')
+        .mockImplementation(async s => s as Schedule);
+
+      const result = await service.update(1, { closeTime: '22:00' });
+      expect(result.openTime).toBe('08:00');
+      expect(result.closeTime).toBe('22:00');
+    });
+
     it('should throw exception when schedule not found', async () => {
       jest.spyOn(scheduleRepository, 'findOne').mockResolvedValue(null);
       await expect(

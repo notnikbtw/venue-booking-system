@@ -177,10 +177,10 @@ describe('BookingService', () => {
       jest
         .spyOn(establishmentRepository, 'findOne')
         .mockResolvedValue(mockEstablishment);
-      jest.spyOn(mockQueryBuilder, 'getRawOne').mockResolvedValue({ sum: 0 });
+      jest.spyOn(mockQueryBuilder, 'getRawOne').mockResolvedValue({ sum: -5 });
 
       await expect(service.create(createBookingDto, 1)).rejects.toThrow(
-        new BadRequestException('Not enough seats available')
+        new BadRequestException('Number of guests exceeds total seats (1)')
       );
     });
   });

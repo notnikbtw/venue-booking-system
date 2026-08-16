@@ -121,6 +121,49 @@ describe('UsersService', () => {
       expect(result).toEqual(savedUser);
     });
 
+    it('should hash password and handle avatar upload when provided', async () => {
+      const mockUser = {
+        id: 1,
+        name: 'User',
+        email: 'email@example.com',
+        avatarUrl: '/uploads/avatars/old.png',
+      } as User;
+
+      const avatarFile = {
+        filename: 'new-avatar.png',
+      } as Express.Multer.File;
+
+      const updateDto = {
+        password: 'plainPassword123',
+      };
+
+      jest.spyOn(usersRepository, 'findOneBy').mockResolvedValue(mockUser);
+      jest
+        .spyOn(fileUploadService, 'getFileUrl')
+        .mockReturnValue('/uploads/avatars/new-avatar.png');
+      jest
+        .spyOn(usersRepository, 'merge')
+        .mockImplementation((target, src) => Object.assign(target, src));
+      jest
+        .spyOn(usersRepository, 'save')
+        .mockImplementation(async (user: any) => ({
+          ...user,
+          password: 'hashedPassword',
+        }));
+
+      const result = await service.updateCurrentUser(1, updateDto, avatarFile);
+
+      expect(fileUploadService.deleteFile).toHaveBeenCalledWith(
+        '/uploads/avatars/old.png'
+      );
+      expect(fileUploadService.getFileUrl).toHaveBeenCalledWith(
+        'new-avatar.png'
+      );
+      expect(result.avatarUrl).toBe('/uploads/avatars/new-avatar.png');
+      expect(result.avatarSeed).toBeNull();
+      expect((result as any).password).toBeUndefined();
+    });
+
     it('should throw an error if user is not found', async () => {
       jest.spyOn(usersRepository, 'findOneBy').mockResolvedValue(null);
       await expect(
@@ -159,6 +202,49 @@ describe('UsersService', () => {
       expect(usersRepository.save).toHaveBeenCalledWith(mockUser);
 
       expect(result).toEqual(savedUser);
+    });
+
+    it('should hash password and handle avatar upload in adminUpdateUser', async () => {
+      const mockUser = {
+        id: 1,
+        name: 'User',
+        email: 'email@example.com',
+        avatarUrl: '/uploads/avatars/old.png',
+      } as User;
+
+      const avatarFile = {
+        filename: 'new-avatar.png',
+      } as Express.Multer.File;
+
+      const updateDto = {
+        password: 'plainPassword123',
+      };
+
+      jest.spyOn(usersRepository, 'findOneBy').mockResolvedValue(mockUser);
+      jest
+        .spyOn(fileUploadService, 'getFileUrl')
+        .mockReturnValue('/uploads/avatars/new-avatar.png');
+      jest
+        .spyOn(usersRepository, 'merge')
+        .mockImplementation((target, src) => Object.assign(target, src));
+      jest
+        .spyOn(usersRepository, 'save')
+        .mockImplementation(async (user: any) => ({
+          ...user,
+          password: 'hashedPassword',
+        }));
+
+      const result = await service.adminUpdateUser(1, updateDto, avatarFile);
+
+      expect(fileUploadService.deleteFile).toHaveBeenCalledWith(
+        '/uploads/avatars/old.png'
+      );
+      expect(fileUploadService.getFileUrl).toHaveBeenCalledWith(
+        'new-avatar.png'
+      );
+      expect(result.avatarUrl).toBe('/uploads/avatars/new-avatar.png');
+      expect(result.avatarSeed).toBeNull();
+      expect((result as any).password).toBeUndefined();
     });
 
     it('should throw an error if user is not found', async () => {
