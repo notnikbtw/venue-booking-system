@@ -21,7 +21,7 @@ import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository, SelectQueryBuilder } from 'typeorm';
 
-type EstablishmentWithMetrics = Establishment & {
+export type EstablishmentWithMetrics = Establishment & {
   commentsCount: number;
   avgRating: number;
   weightedRating: number;
