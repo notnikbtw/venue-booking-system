@@ -2,7 +2,7 @@ import { BookingService } from '@modules/booking/booking.service';
 import { Booking } from '@modules/booking/entities/booking.entity';
 import { Establishment } from '@modules/establishment/entities/establishment.entity';
 import { User } from '@modules/users/entities/user.entity';
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -144,6 +144,44 @@ describe('BookingService', () => {
         where: { id: 1 },
       });
       expect(bookingRepository.create).not.toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestException if not enough seats available', async () => {
+      const mockUser = { id: 1, name: 'User' } as User;
+      const mockEstablishment = {
+        id: 1,
+        name: 'Establishment',
+        totalSeats: 10,
+      } as Establishment;
+
+      jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser);
+      jest
+        .spyOn(establishmentRepository, 'findOne')
+        .mockResolvedValue(mockEstablishment);
+      jest.spyOn(mockQueryBuilder, 'getRawOne').mockResolvedValue({ sum: 9 });
+
+      await expect(service.create(createBookingDto, 1)).rejects.toThrow(
+        new BadRequestException('Not enough seats available')
+      );
+    });
+
+    it('should throw BadRequestException if numberOfGuests exceeds totalSeats', async () => {
+      const mockUser = { id: 1, name: 'User' } as User;
+      const mockEstablishment = {
+        id: 1,
+        name: 'Establishment',
+        totalSeats: 1,
+      } as Establishment;
+
+      jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser);
+      jest
+        .spyOn(establishmentRepository, 'findOne')
+        .mockResolvedValue(mockEstablishment);
+      jest.spyOn(mockQueryBuilder, 'getRawOne').mockResolvedValue({ sum: -5 });
+
+      await expect(service.create(createBookingDto, 1)).rejects.toThrow(
+        new BadRequestException('Number of guests exceeds total seats (1)')
+      );
     });
   });
 

@@ -10,7 +10,10 @@ import { PageDto } from '@common/pagination/dto/page.dto';
 import { CreateEstablishmentDto } from '@modules/establishment/dto/create-establishment.dto';
 import { UpdateEstablishmentDto } from '@modules/establishment/dto/update-establishment.dto';
 import { Establishment } from '@modules/establishment/entities/establishment.entity';
-import { EstablishmentService } from '@modules/establishment/establishment.service';
+import {
+  EstablishmentService,
+  EstablishmentWithMetrics,
+} from '@modules/establishment/establishment.service';
 import { User, UserRole } from '@modules/users/entities/user.entity';
 import {
   Controller,
@@ -103,7 +106,7 @@ export class EstablishmentController {
   getAllEstablishments(
     @Query() pageOptionsDto: PageOptionsDto,
     @CurrentUser() user?: User
-  ): Promise<PageDto<Establishment>> {
+  ): Promise<PageDto<EstablishmentWithMetrics>> {
     return this.establishmentService.getAllEstablishments(
       pageOptionsDto,
       user?.id
