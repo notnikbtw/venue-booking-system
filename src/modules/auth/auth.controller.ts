@@ -46,7 +46,7 @@ export class AuthController {
   @Post('login')
   @Throttle({ auth: { limit: 5, ttl: 60000 } })
   @ApiOperation({ summary: 'Login user' })
-  @ApiCreatedResponse({ description: 'Login successful' })
+  @ApiOkResponse({ description: 'Login successful' })
   @ApiNotFoundResponse({ description: 'User not found' })
   login(@Body() loginAuthDto: LoginDto) {
     return this.authService.login(loginAuthDto);
@@ -79,16 +79,5 @@ export class AuthController {
   @ApiCreatedResponse({ description: 'Logged out successfully' })
   logout(@Request() req) {
     return this.authService.logout(req.user.id);
-  }
-
-  @Post('logout-all')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Logout from all devices' })
-  @ApiCreatedResponse({
-    description: 'Logged out from all devices successfully',
-  })
-  logoutAllDevices(@Request() req) {
-    return this.authService.logoutAllDevices(req.user.id);
   }
 }

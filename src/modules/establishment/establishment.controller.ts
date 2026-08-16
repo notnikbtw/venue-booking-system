@@ -28,6 +28,7 @@ import {
   UseInterceptors,
   UploadedFiles,
   ParseFloatPipe,
+  ParseIntPipe,
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
@@ -155,8 +156,8 @@ export class EstablishmentController {
   @ApiOperation({ summary: 'Get all comments from establishment' })
   @ApiOkResponse({ description: 'Comments retrieved successfully' })
   @ApiNotFoundResponse({ description: 'Establishment not found' })
-  getAllComments(@Param('id') id: string) {
-    return this.establishmentService.getAllComments(+id);
+  getAllComments(@Param('id', ParseIntPipe) id: number) {
+    return this.establishmentService.getAllComments(id);
   }
 
   @Patch(':id')

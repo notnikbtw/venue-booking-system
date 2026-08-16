@@ -14,6 +14,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseIntPipe,
   Patch,
   Query,
   Request,
@@ -100,7 +101,7 @@ export class UsersController {
   @ApiForbiddenResponse({ description: 'Insufficient permissions' })
   @ApiNotFoundResponse({ description: 'User not found' })
   adminUpdateUser(
-    @Param('id') id: number,
+    @Param('id', ParseIntPipe) id: number,
     @Body() adminUpdateUserDto: AdminUpdateUserDto,
     @UploadedFile() avatarFile?: Express.Multer.File
   ) {
@@ -127,7 +128,7 @@ export class UsersController {
   @ApiOperation({ summary: 'Get user by ID' })
   @ApiOkResponse({ description: 'User retrieved successfully' })
   @ApiNotFoundResponse({ description: 'User not found' })
-  getUserById(@Param('id') id: number) {
+  getUserById(@Param('id', ParseIntPipe) id: number) {
     return this.usersService.getUserById(id);
   }
 
